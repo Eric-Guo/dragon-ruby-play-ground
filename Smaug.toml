@@ -2,9 +2,9 @@
 # The name of your game's executable. This should only contain a-z, A-Z, 0-9, _ or -.
 name = "play_ground"
 # The game's title. This will show up in the tile bar of your executable.
-title = "play_ground"
-version = "0.1.0"
-authors = ["TODO: My Name <todo@example.com>"]
+title = "Eric play ground"
+version = "0.0.1"
+authors = ["Eric-Guo"]
 icon = "metadata/icon.png"
 compile_ruby = false
 
@@ -17,6 +17,6 @@ edition = ""
 [itch]
 # The Project URL you set when you created the game on Itch.io. https://my-username.itch.io/my-game.
 # This will also be the name of your build files, so fill it out even if you aren't uploading to Itch.io.
-url = "todo-change-me"
+url = "play-ground"
 # Your username on Itch.io.
-username = "todo-change-me"
+username = "eric-guo"
