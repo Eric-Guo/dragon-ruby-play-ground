@@ -1,29 +1,31 @@
 def tick args
-  # The next expression we will go through is lines:
-  #                       X1  Y1    X2
-  args.outputs.lines <<  [0,  90,   160,
-  # Y2    RED   GREEN   BLUE  ALPHA
-    0,    0,    0,      0,    255]
-  # Lines are different but a little less
-  # complicated. The first 4 fields are the
-  # x/y coordinate beginning and end points.
-  # x1, y1 are the origin points, and x2, y2
-  # are the end points to the line. Just like with
-  # labels we can change the color of the line.
-  # We can even make it invisible or transparent
-  # using alpha if we want.
+  # Often it is necessary to play with the
+  # coordinates to get things in their
+  # desired locations. We shall create a
+  # couple variables to assist in this process.
+  board_x = 50
+  board_y = 60
+  board_w = 20
+  board_h = 20
 
-  # The Line also has a hash
-  args.outputs.lines << {
-    x: 0,
-    y: 0,
-    x2: 160,
-    y2: 90,
-    r: 0,
-    g: 255,
-    b: 0,
-    a: 255
-  }
-  # Play around with the values and you can see how
-  # it affects the lines
+  # Boarders and solids are like lines, but they
+  # start at the desired coordinate and then have
+  # a width and height. X and Y are the coordinates.
+  # W and H are width and height.
+  # Similarly to the other expressions
+  # we also have alignment color and transparency.
+
+  #                        X         Y
+  args.outputs.borders << [board_x,  board_y,
+  #  WIDTH     HEIGHT   RED  GREEN   BLUE  ALPHA
+     board_w,  board_h, 0,   0,      200,  255]
+
+  # solids are organized pretty much the same
+  # way as boarders. The only difference is
+  # that they portray a solid color.
+  args.outputs.solids << [board_x+1, board_y+1,
+  board_w-2, board_h-2, 35, 0, 50, 255]
+
+  # As before, you can play around with the values
+  # to see how things in the window change
 end
