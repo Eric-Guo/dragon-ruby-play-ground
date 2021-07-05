@@ -1,232 +1,262 @@
-# As you have seen in the tech demo these expressions can do a lot.
-# Now that you have seen the tech demo, its time to show you how it all works.
+# frozen_string_literal: true
 
-# By default args is what we tend to use as the main object which the rest of the game will run on.
-def tick args
+# In addition to the expressions are such things as gtk expressions.
+$gtk.reset # reset all game state if reloaded.
+# This expression will reset or reload the game every time that the game is saved.
+# There are many more that exist in dragon ruby that can help with testing
+# the game or even with functionality.
+# If we wanted to we could set up something more elaborate here, instead of creating it globally,
+# we could have the game reset if the user presses r for example.
 
-  # For an example we are going to create an interface with the expressions shown in the demo.
-  # To show each element one at a time we are going to create an if statement to separate each step
-  # This way we can see each element introduced individually as to not get too overwhelming.
+def tick(args)
+  # I have taken the liberty of cleaning up and condensing the previous example code
+  # into a function called user interface.
+  user_interface args
+  # As we expand our user interface we can add functions and information to it.
+  # To condense it i took all the code and put it into its own function called user_interface.
+  # If we added user interface aspects we could add them to this function.
 
-  #-----------Ticks
-  # First we are going to want a variable to represent the tick count there are 60 ticks per second
-  # Ticks also represent the number of frames of the game that exist consecutively per second
-  ticks = args.state.tick_count # Having a variable lets us bypass using the whole expression going forward.
-
-  # The tick count is useful.
-  # It allows us to know how many instances of the game have ran,
-  # it gives us a sense of time for our game,
-  # and because game will update every frame,
-  # it will allow us to differentiate actions depending on the current frame.
-
-  # Something it can also allow for is the animation sprites and environments.
-  # Unfortunately we wont have time to go over that, so expect a later tutorial to cover that.
-
-  #----------- Mouse clicks and inputs
-  # One more declaration we are going to for the tutorial is click count
-  # Because there is a game instance every frame,
-  # we need a way to save the changes from frame to frame
-  # We can do this by creating a state variable.
-  # State variables are best created in an if statement for our purposes.
-  # If we try to create them outside of the if statement,
-  # it can result in the variable being redeclared with it's starting value every frame.
-
-  # So we create click_count
-  # In this case, if click_count doesnt exist we create it.
-  if !args.state.click_count
-
-    args.state.click_count = 0
-  end
-
-  # We are making click_count, to track how many clicks have occurred inside the game window.
-  # Using this we are able to change the game state every time a click occurs inside the window.
-  # Clicking on it now will reveal a temporary message from further in the tutorial.
-
-  # Now we check to see if the click has returned to the up position.
-  # Every time this occurs we can increment click count by one.
+  # Despite the clean up this bit of code is still useful
+  # to show each item one step at a time so we keep it here up top.
+  ticks = args.state.tick_count
+  args.state.click_count = 0 unless args.state.click_count
   if args.inputs.mouse.up
-    args.state.click_count += 1
-    # We also need to reset mouse.up to 0 so it doesn't continuously increment click_count every frame.
+    args.state.click_count = args.state.click_count + 1
     args.inputs.mouse.up = 0
   end
-  # This is one of the many example of how you can use inputs to receive information from the user.
-  # In this case we are receiving a click from the user
-  # and depending on the number of clicks we are outputting different information onto the screen.
-  # The way we set it up, it's kind of like a power point in that each click adds an additional component.
 
-  # We can take input from any key, click or button via the
-  # args.inputs.mouse, args.inputs.keyboard, and args.inputs.controller expressions.
-  # Adding key designations to keyboard and controller expressions allow us to use
-  # almost any key or button in our game.
-  # From there we can add .up, .down, .held, .click
-  # and all sorts of expressions to change the the information we are obtaining from a press.
+  # The next element for us to examine is sprites. Now these are the key elements of the game.
+  # (plus or minus some labels.)
+  # Sprites will act as a character, npc, building, wall, bullet,
+  # or basically anything graphical on the screen.
+  # Its easy to make a simple interface using lines, borders, and solids,
+  # but sprites will fill your game with colors and fantastic moving parts.
 
-  # There will be direct example in the sprite section of the tutorial
+  # Lets start with a simple sprite such as a circle:
 
-######################################################
-  # So where do we start?
-  # We already have.
-
-  # To get some actual output onto the screen though, we will start with labels,
-  # but there are many other expressions
-  # that you can expect to find in the dragonruby gametoolkit (gtk).
-  # These expressions are: labels, lines, borders, solids, sprites, inputs, outputs, keyboard, mouse, and controller
-  # There are many other expressions with more added with every update, but i am going to start with these.
-
-  #----------- Labels
-
-  # Our first label will be placed onto the top right corner of the screen.
-
-  # This is the if statement that will change what pops up onto the screen
-  # Each time we click the mouse.
-  # If you haven't clicked once yet, CLICK NOW!
   if args.state.click_count == 1
-
-    # To create a label with the gtk we will need to use the following array format:
-    #                        X     Y    TEXT                    SIZE   ALIGNMENT   RED     GREEN   BLUE   ALPHA   FONT FILE
-    args.outputs.labels << [1000, 720, "This is a temp msg", 5, 0, 200, 050, 100, 175, "fonts/coolfont.ttf"]
+    #                         X    Y    W    H    Location/Path           Angle Alpha Red Green Blue
+    args.outputs.sprites << [600, 500, 200, 200, 'sprites/circle/black.png', 45, 200, 10, 230, 15]
+    # Important to note here is the back slashed used for the location of the png.
+    # Different systems work differently when tracing a location.
+    # The gtk uses back slashes for location.
+    # It's important to use the correct path, otherwise... well you will see :)
   end
+  # Dont forget to click to reveal the new element
 
-  # The parameters start with the coordinate, x and y,
-  # followed by the text in quotations that you want outputted,
-  # each of which is to be separated by a comma.
-  # After that we have the text size, alignment, of which 1 will center your text on the coordinates,
-  # followed by red, green, and blue saturation.
-  # Finally, the alpha is the transparency,
-  # which needs to be set at 255 to be solid, and lastly is font with the extension .ttf.
+  # Wow that's pretty big, and its on top of the user interface too.
+  # Lets run through what the elements of the sprite expression consist of before we try to fix it.
 
-  #
+  # If you use the method from above you have your X, and Y coordinates,
+  # then your Length and With in pixels
+  # Following this, we have the location of the file of the sprite.
+  # Then the Angle, which rotates counter clockwise starting at 3 O'clock.
+  # We use degrees instead of radians, because...
+  # Well it's so much more intuitive and easy isn't it?
+  # Following the angle is the alpha, and the 3 color saturation's red green blue.
 
-  # Click!
-  if args.state.click_count > 2
-    # we are going to replace this temp message with the tick count in the corner.
-    # It will help us keep track of how many instances of the game have ran among other things.
-    args.outputs.labels << [1000, 720, ticks, 25, 0, 200, 050, 100, 25]
-  end
-
-  # Click!
-  if args.state.click_count > 3
-    # We can leave off parameters if you dont need them as well.
-    # Leaving them off will set them to a default value.
-    args.outputs.labels << [640, 700, "This is a game", 0, 1] # This will be the title for the game.
-  end
-
-  # Click!
-  if args.state.click_count > 4
-    # We can also use a hash, which is a more readable version, that sometimes has more functionality.
-    args.outputs.labels << {
-        x: 10,
-        y: 710,
-        text: "Lives:",
-        size_enum: -3,
-        alignment_enum: 0,
-        r: 155,
-        g: 50,
-        b: 50,
-        a: 255,
-        font: "fonts/manaspc.ttf"
+  # But there are more options if you use hashes.
+  if args.state.click_count == 2
+    args.outputs.sprites << {
+      x: 100,
+      y: 100,
+      w: 100,
+      h: 100,
+      path: 'sprites/misc/dragon-0.png',
+      angle: 0,
+      a: 255,
+      r: 255,
+      g: 255,
+      b: 255,
+      # These we wont be touching in this tutorial, but they are extremely useful.
+      source_x: 0,
+      source_y: 0,
+      source_w: -1,
+      source_h: -1,
+      flip_vertically: false,
+      flip_horizontally: false,
+      angle_anchor_x: 0.5,
+      angle_anchor_y: 1.0
     }
   end
-  # Most of the expressions have a more readable version like this
-  # which can help when you are just starting out.
-  # Hashes may be more readable, but they are harder on performance.
-  # Arrays are faster and easier to compile.
-  # It's more efficient to use arrays, so once the developer gets use to them,
-  # unless hashes are needed for functionality, arrays are the go to.
+  # Oops! Whats this checkers pattern?
+  # This is what happens when your path doesnt lead to a file or destination without a compatible file.
+  # No sprite exists of this type so it outputs a place holder.
 
-  #----------- Lines
-  # Click!
-  if args.state.click_count > 5
-    # The next expression we will go through is lines:
-    #                       X1  Y1    X2     Y2      RED   GREEN   BLUE  ALPHA
-    args.outputs.lines << [ 0,  600,  1280,  600,    0,    0,      0,    255]
-  end
-  # Lines are different but a little less complicated.
-  # The first 4 fields are the x/y coordinate beginning and end points.
-  # x1, y1 are the origin points, and x2, y2 are the end points to the line.
-  # Just like with labels you can change the color of the line.
-  # You can even make it invisible or transparent using alpha if you want.
+  # For our purposes the circle will work fine.
 
-  # The Line also has a hash
-
-  # Click!
-  if args.state.click_count == 7
-    args.outputs.lines << {
-        x: 0,
-        y: 0,
-        x2: 1280,
-        y2: 720,
-        r: 0,
-        g: 255,
-        b: 0,
-        a: 255
-    }
-    args.outputs.lines << [0, 720, 1280, 0]
+  #-------------- Calculating the position
+  # We want to fix the circle so lets move it to the center of the screen and make it solid again
+  # Lets set a couple of variables to the dimensions of the screen to make this easier
+  # We will also need the size of the circle as well
+  sprite_size = 50 # Lets set the circle size to 50 pixels for now
+  screen_bound_x = 1280
+  screen_bound_y = 720
+  if args.state.click_count == 3
+    args.outputs.sprites << [screen_bound_x / 2, screen_bound_y / 2, sprite_size, sprite_size, 'sprites/circle/black.png',
+                             135]
   end
 
-  # So far so good.
-  # Our user interface is looking alright.
-  # I think we could make the title more distinct however.
+  # Its still not quite centered is it.
+  # Since the origin of the sprite is in the bottom left corner of itself,
+  # lets try to include that in our calculations.
 
-  #----------- Solids and boarders
+  if args.state.click_count == 4
+    args.outputs.sprites << [(screen_bound_x - sprite_size) / 2, (screen_bound_y - sprite_size) / 2, sprite_size, sprite_size,
+                             'sprites/circle/black.png', 112.5]
+  end
 
-  # For this we are going to use some boarders and solids.
-  # Lets declare some values.
-  # Remember that the coordinate for the title label were: 640, 700
-  # and alignment was selected to center the text.
-  # Often you will want to play with the coordinate to get things where you want them.
-  # We shall create a couple variables to assist in this process.
+  # Much better its useful to take into consideration the objects dimensions when calculating positions.
+
+  #---------- Movement
+  # What about movement?
+  # If we want to move our sprite we will need to have its coordinates
+  # change every time we press a key or button.
+  # This means will need a variable that is saved from frame to frame like the clicks are.
+
+  # To do that first we will need to determine if our sprite exists.
+  # If it doesn't it will create the variables needed for the sprites creation.
+  # We do this by checking if the state value for the coordinates exist
+  # this way we are not reinitialising the sprite every frame in the same spot.
+  unless args.state.circle_x
+    # As before to center our sprite we need to include the sprites size in the calculation.
+    args.state.circle_x = (screen_bound_x - sprite_size) / 2
+    args.state.circle_y = (screen_bound_y - sprite_size) / 2
+    # Also, if we care about the sprites direction we will need this
+    # to be a variable that will carry from frame to frame as well.
+    args.state.circle_direction = 90
+  end
+
+  # Now we can see how movement might work in a game.
+  # We are going to establish a variable for the speed of our sprite.
+  # This can help us change the movement speed as we please with one edit to speed
+  # instead of having to change it a number of times though out our code.
+  # You may not need to use a variable for your game but for this one we will.
+  speed = 5
+
+  # Click!
+  if args.state.click_count == 5
+    args.outputs.sprites << [args.state.circle_x, args.state.circle_y, sprite_size, sprite_size,
+                             'sprites/circle/black.png', 90]
+
+    # Now, just like when you click to advance the tutorial, you can press a key to move the sprite.
+    # This works with the expression keyboard.
+    # You can also use controller or mouse.
+    # For our game keyboard will serve our purposes nicely.
+
+    # For this to work we need to check if our sprite exists in the first place
+    # and determine if the desired key was pressed.
+    if args.inputs.keyboard.d && args.state.circle_x
+      # If our user presses the d key we update the x value depending on the desired speed.
+      args.state.circle_x += speed
+    elsif args.inputs.keyboard.a && args.state.circle_x
+      # This line decrements x based on a.
+      args.state.circle_x -= speed
+    elsif args.inputs.keyboard.w && args.state.circle_y
+      # and w increments the y coordinate.
+      args.state.circle_y += speed
+    elsif args.inputs.keyboard.s && args.state.circle_y
+      # and finally y is decremented by the s key.
+      args.state.circle_y -= speed
+    end
+    # We are using the wasd format
+    # Additionally, you can set almost any key to perform an action if you desire.
+    # It becomes possible using the args.input.keyboard expressions
+    # Just follow that up with a .key whatever key that might be.
+
+  end
+
+  # We can also have speed carry over if we want it to change as we play our game.
+  # This could allow for power ups, equipment, or other components to change the characters speed.
+  # How you implement this is up to you.
+  # Here we are going to use speed to move the character and for nothing else.
+  args.state.speed = 3 unless args.state.speed
+
+  # Another cool thing that can be done is a direction change.
+  # You can change the angle in which the sprite is rendered based on the direction your sprite is moving.
+  # In this case we bound the direction change to the key pressed, but there are many other ways
+  # to perform this and other direction changes.
+  # You could even have the sprite slowly turn to the designated direction.
+  # Click
+  if args.state.click_count >= 6
+
+    args.outputs.sprites << [args.state.circle_x, args.state.circle_y, sprite_size, sprite_size,
+                             'sprites/circle/black.png', args.state.circle_direction]
+    if args.inputs.keyboard.d && args.state.circle_x
+      args.state.circle_x += args.state.speed
+      args.state.circle_direction = 0
+    end
+    if args.inputs.keyboard.a && args.state.circle_x
+      args.state.circle_x -= args.state.speed
+      args.state.circle_direction = 180
+    end
+    if args.inputs.keyboard.w && args.state.circle_y
+      args.state.circle_y += args.state.speed
+      args.state.circle_direction = 90
+    end
+    if args.inputs.keyboard.s && args.state.circle_y
+      args.state.circle_y -= args.state.speed
+      args.state.circle_direction = 270
+    end
+
+    # Now if we want our sprite to wrap we can do that by having the sprites coordinates change
+    # when it goes out of bounds or off the screen.
+    # This can also allow you to make barriers too.
+    if args.state.click_count > 6
+      if args.state.circle_y <= 0
+        # If the circle y coordinate is less than the bottom of the screen
+        # it will relocate the sprite at the top of the screen.
+        # This is how the rest of the directions work too.
+        args.state.circle_y = screen_bound_y
+      elsif  args.state.circle_y >= screen_bound_y
+        args.state.circle_y = 0
+      elsif  args.state.circle_x <= 0
+        args.state.circle_x = screen_bound_x
+      elsif  args.state.circle_x >= screen_bound_x
+        args.state.circle_x = 0
+      end
+    end
+    # Now if we want we can also clean this up and have the sprite wrap around the screen when it hits
+    # the user interface, but i'll leave that as an exercise
+  end
+  # Now you have seen how sprites work and how to move them.
+  # There are so many ways to go about all of what we have seen.
+  # The next section will once more look at the tech demo briefly.
+end
+
+# Bellow is just the condensed user interface stuff
+# User interface stuff
+def user_interface(args)
+  ticks = args.state.tick_count
+
+  args.outputs.labels << [1000, 720, ticks, 25, 0, 200, 0o50, 100, 25]
+  args.outputs.labels << [640, 700, 'This is a game', 0, 1]
+  args.outputs.labels << { x: 10, y: 710, text: 'Lives:', size_enum: -3, alignment_enum: 0, r: 155,
+                           g: 50, b: 50 }
+  args.outputs.lines << [0, 600, 1280, 600, 0, 0, 0, 255]
+
   board_x = 540
   board_y = 668
   board_w = 200
   board_h = 45
-  echo = 4 # Echo is going to represent a slight modification to the original values
-  # our echo value will allow us to change additional solids and boarders to make the background more distinct
-  # Click!
-  if args.state.click_count > 7
+  echo = 4
 
-    #                        X         Y         WIDTH     HEIGHT   RED  GREEN   BLUE  ALPHA
-    args.outputs.borders << [board_x, board_y, board_w, board_h, 0, 0, 200, 255]
-  end
+  args.outputs.borders << [board_x, board_y, board_w, board_h, 0, 0, 200, 255]
+  args.outputs.borders << [board_x - echo, board_y - echo, board_w + echo * 2, board_h + echo * 2, 200, 0, 0, 255]
 
-  # Boarders and solids are like lines, but they start at the desired coordinate and then have
-  # a width and height.
-  # X, Y are the coordinates and w and h are width and height.
-  # Similarly to the other expressions we also have alignment and color.
-
-
-  # Click!
-  if args.state.click_count > 8
-    # Here we have the additional borders at an offset of size echo
-    args.outputs.borders << [board_x - echo, board_y - echo, board_w + echo * 2, board_h + echo * 2, 200, 0, 0, 255]
-  end
-  if args.state.click_count > 9
-    args.outputs.solids << [board_x - echo, board_y - echo, board_w + echo * 2, board_h + echo * 2, 35, 0, 50, 255]
-  end
-
+  args.outputs.solids << [board_x - echo, board_y - echo, board_w + echo * 2, board_h + echo * 2, 35, 0, 50, 255]
   echo -= 5
-  # Changing the echo here can allow to create a depth effect
-  # or add layers to the background of the title
 
-  # Click!
-  if args.state.click_count > 9
-    args.outputs.solids << {
-        x: board_x - echo,
-        y: board_y - echo,
-        w: board_w + echo * 2,
-        h: board_h + echo * 2,
-        r: 25,
-        g: 100,
-        b: 40,
-        a: 255
-    }
-    echo = 10
-    args.outputs.solids << [board_x - 4, board_y - echo, board_w + echo + 4, board_h + echo + 4, 0, 35, 0, 20]
-    # This is a very basic shadow to show how these might be done.
-    # It doesnt look great but if we used a similar looking sprite
-    # with rounded edges we might get a better effect
-  end
-
-  # Now that our tittle is more distinct, our rough user interface is done for the movement.
-  # The next steps will cover sprites, movement and wrapping.
+  args.outputs.solids << {
+    x: board_x - echo,
+    y: board_y - echo,
+    w: board_w + echo * 2,
+    h: board_h + echo * 2,
+    r: 25,
+    g: 100,
+    b: 40,
+    a: 255
+  }
+  echo = 10
+  args.outputs.solids << [board_x - 4, board_y - echo, board_w + echo + 4, board_h + echo + 4, 0, 35, 0, 20]
 end
