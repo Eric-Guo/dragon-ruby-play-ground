@@ -1,512 +1,377 @@
 # frozen_string_literal: true
 
-# Here we are, once again, looking at the tech demo.
-# We can now look at the inner workings of the demo.
+$gtk.reset
+# This is the end of our intro tutorial.
+# Here we will provide you with the resourses
+# to get started with the Dragonruby gametoolkit
 
-# We now know that pop up is controlled by the mouse.click expression.
-# Once the user clicks it no longer remains.
+# Here is the link to the gtk:
+# https://dragonruby.itch.io/dragonruby-gtk
+# Check if you qualify for a free licence and contact Amir at ar@amirrajan.net
 
-# We can see the differnt allignments, sizes and colors for labels.
+# You can edit your code via a text document if you want,
+# but it's just as easy to download and editor
+# (IDE: (Intergrated Development Environment))
+# A couple that are pretty good are:
 
-# More interestingly we now know the moving obects in the demo are controlled
-# by the tick count
+# Visual studio, a free IDE with a built in terminal
+# https://code.visualstudio.com
 
-# We can see how only changing the x or y origin coordinants of a line can
-# change length or straitness of that line.
+# Ruby Mine, a paid IDE that offeres itself free to:
+# students, teachers, classrooms, and open source projects.
+# It also has a free trial.
+# https://www.jetbrains.com/ruby
 
-# Tick count is also instrumental in the fading of the solid, boarder,
-# and sprite as seen below the moving lines
+# Once you have The dragonruby gtk downloaded and unzipped
+# You will need to open the terminal, you can use your IDE's terminal for this.
+# Then Navigate to the folder that contains the Dragonruby.exe
+# Once there you can symply type "./dragonruby" into the terminal and poof
+# The hello world example that comes with the gtk will reveal itself in a pop out window
 
-# Cooler still is how the rotation of the dragonruby sprite is base on tick count.
-# We could expand upon this further by having the sprite move towards a target one pixel every tick
-# or we could have it follow the users sprite arround.
-# This is where I think the really cool stuff is possible.
-# Maybe a power up sprite appears every couple thousand ticks
-# or maybe an enemy appears for the user to defeat appears.
+# Important to note here is that dragon ruby will look for the first app folder available
+# This means that the app folder inside of mygame is what is being compiled into dragonruby
+# If there is a folder you would like to specify for dragonruby to compile you will need to include
+# that files path after "./dragonruby" for example, the tech demo:
+# "./dragonruby samples\01_api_99_tech_demo"
 
-# In the middle we can see the tick count and the indicator of whether of not h has been pressed.
-# This indicator is almost a petasesor to an inventory system or almost anything else.
-# We could have an inventory open when the user presses i or a health potion heal the user when they press h.
+# If you desire more info on anything that we have gone over and more,
+# the samples folder has dozens of examples with documentation;
+# in addition, there is documentation inside of the "mygame\app\documentation" folder.
+# This documentation goes of over the expressions we have used in the tutorial
+# and is exelent for quick refernce of them until you are comfortable using them.
 
-# We have a controller example and the coordenants and frames since the last click.
-# This could help us build a timed event, a timed menue,
-# or even a sprite that has to be clicked on with in a time limit.
+# Last but not least, here we have the most basic of shooters.
+# With a little more work and imagination we could build this into a game of asteroids.
 
-# Then finnaly we have a field that checks whether or not a click has happened inside of it's bounds.
-# We can change click to a key, a button, or even check if a sprite is in a certain area.
-# This can help us esstablish a bounds, a win zone, or even interactions between sprites.
+# With out further aduo
+def tick(args)
+  args.state.random ||= 1_000_000_000 # Random variable for enemy spawn
+  # This is a shortcut, using args.state.x ||= 0 is the same as an if not ex:
+  # args.state.x ||= 0 is a short version of if !args.state.x then args.state.x = 0
 
-# Finnally this brings us to the game state.
-# If we click this button it exports the gamestate.
-# The gamestate has information of everything that exited in the frame it is exported.
-# This gamestate helps us find errors, bugs, exceptions, or just strait up something we missed.
-# It can be very usefull when we have a lot going on at once.
+  user_interface args # The user interface function
 
-#--------------------------------------------------------------------------------------------------
-#
-#  APIs listing that haven't been encountered in previous sample apps:
-#
-#  - args.state.new_entity: Used when we want to create a new object, like a sprite or button.
-#    For example, if we want to create a new button, we would declare it as a new entity and
-#    then define its properties. (Remember, you can use state to define ANY property and it will
-#    be retained across frames.)
-#
-#    If you have a solar system and you're creating args.state.sun and setting its image path to an
-#    image in the sprites folder, you would do the following:
-#    (See samples/99_sample_nddnug_workshop for more details.)
-#
-#    args.state.sun ||= args.state.new_entity(:sun) do |s|
-#    s.path = 'sprites/sun.png'
-#    end
-#
-#  - String interpolation: Uses #{} syntax; everything between the #{ and the } is evaluated
-#    as Ruby code, and the placeholder is replaced with its corresponding value or result.
-#
-#    For example, if we have a variable
-#    name = "Ruby"
-#    then the line
-#    puts "How are you, #{name}?"
-#    would print "How are you, Ruby?" to the console.
-#    (Remember, string interpolation only works with double quotes!)
-#
-#  - Ternary operator (?): Similar to if statement; first evalulates whether a statement is
-#    true or false, and then executes a command depending on that result.
-#    For example, if we had a variable
-#    grade = 75
-#    and used the ternary operator in the command
-#    pass_or_fail = grade > 65 ? "pass" : "fail"
-#    then the value of pass_or_fail would be "pass" since grade's value was greater than 65.
-#
-#  Reminders:
-#
-#  - args.grid.(left|right|top|bottom): Pixel value for the boundaries of the virtual
-#    720 p screen (Dragon Ruby Game Toolkits's virtual resolution is always 1280x720).
-#
-#  - Numeric#shift_(left|right|up|down): Shifts the Numeric in the correct direction
-#    by adding or subracting.
-#
-#  - ARRAY#inside_rect?: An array with at least two values is considered a point. An array
-#    with at least four values is considered a rect. The inside_rect? function returns true
-#    or false depending on if the point is inside the rect.
-#
-#  - ARRAY#intersect_rect?: Returns true or false depending on if the two rectangles intersect.
-#
-#  - args.inputs.mouse.click: This property will be set if the mouse was clicked.
-#    For more information about the mouse, go to mygame/documentation/07-mouse.md.
-#
-#  - args.inputs.keyboard.key_up.KEY: The value of the properties will be set
-#    to the frame  that the key_up event occurred (the frame correlates
-#    to args.state.tick_count).
-#    For more information about the keyboard, go to mygame/documentation/06-keyboard.md.
-#
-#  - args.state.labels:
-#    The parameters for a label are
-#    1. the position (x, y)
-#    2. the text
-#    3. the size
-#    4. the alignment
-#    5. the color (red, green, and blue saturations)
-#    6. the alpha (or transparency)
-#    For more information about labels, go to mygame/documentation/02-labels.md.
-#
-#  - args.state.lines:
-#    The parameters for a line are
-#    1. the starting position (x, y)
-#    2. the ending position (x2, y2)
-#    3. the color (red, green, and blue saturations)
-#    4. the alpha (or transparency)
-#    For more information about lines, go to mygame/documentation/04-lines.md.
-#
-#  - args.state.solids (and args.state.borders):
-#    The parameters for a solid (or border) are
-#    1. the position (x, y)
-#    2. the width (w)
-#    3. the height (h)
-#    4. the color (r, g, b)
-#    5. the alpha (or transparency)
-#    For more information about solids and borders, go to mygame/documentation/03-solids-and-borders.md.
-#
-#  - args.state.sprites:
-#    The parameters for a sprite are
-#    1. the position (x, y)
-#    2. the width (w)
-#    3. the height (h)
-#    4. the image path
-#    5. the angle
-#    6. the alpha (or transparency)
-#    For more information about sprites, go to mygame/documentation/05-sprites.md.
+  sprite args # The player sprite function
 
-# This sample app shows different objects that can be used when making games, such as labels,
-# lines, sprites, solids, buttons, etc. Each demo section shows how these objects can be used.
+  bullet_physics args # this function deals with the bullet physics
 
-# Also note that state.tick_count refers to the passage of time, or current frame.
+  amimation args # This function animates the little sprites by the title
 
-class TechDemo
-  attr_accessor :inputs, :state, :outputs, :grid, :args
+  enemy args # This function deals with enemy spawning
+end
 
-  # Calls all methods necessary for the app to run properly.
-  def tick
-    labels_tech_demo
-    lines_tech_demo
-    solids_tech_demo
-    borders_tech_demo
-    sprites_tech_demo
-    keyboards_tech_demo
-    controller_tech_demo
-    mouse_tech_demo
-    point_to_rect_tech_demo
-    rect_to_rect_tech_demo
-    button_tech_demo
-    export_game_state_demo
-    window_state_demo
-    render_seperators
-  end
+def enemy(args)
+  args.state.enemy_time ||= args.state.tick_count
 
-  # Shows output of different kinds of labels on the screen
-  def labels_tech_demo
-    outputs.labels << [grid.left.shift_right(5), grid.top.shift_down(5), 'This is a label located at the top left.']
-    outputs.labels << [grid.left.shift_right(5), grid.bottom.shift_up(30),
-                       'This is a label located at the bottom left.']
-    outputs.labels << [5, 690, 'Labels (x, y, text, size, align, r, g, b, a)']
-    outputs.labels << [5, 660, 'Smaller label.',  -2]
-    outputs.labels << [5, 630, 'Small label.',    -1]
-    outputs.labels << [5, 600, 'Medium label.',    0]
-    outputs.labels << [5, 570, 'Large label.',     1]
-    outputs.labels << [5, 540, 'Larger label.',    2]
-    outputs.labels << [300, 660, 'Left aligned.',    0, 2]
-    outputs.labels << [300, 640, 'Center aligned.',  0, 1]
-    outputs.labels << [300, 620, 'Right aligned.',   0, 0]
-    outputs.labels << [175, 595, 'Red Label.',       0, 0, 255, 0, 0]
-    outputs.labels << [175, 575, 'Green Label.',     0, 0,   0, 255, 0]
-    outputs.labels << [175, 555, 'Blue Label.',      0, 0,   0,   0, 255]
-    outputs.labels << [175, 535, 'Faded Label.',     0, 0,   0,   0, 0, 128]
-  end
-
-  # Shows output of lines on the screen
-  def lines_tech_demo
-    outputs.labels << [5, 500, 'Lines (x, y, x2, y2, r, g, b, a)']
-    outputs.lines  << [5, 450, 100, 450]
-    outputs.lines  << [5, 430, 300, 430]
-    outputs.lines  << [5, 410, 300, 410, state.tick_count % 255, 0, 0, 255] # red saturation changes
-    outputs.lines  << [5, 390 - state.tick_count % 25, 300, 390, 0, 0, 0, 255] # y position changes
-    outputs.lines  << [5 + state.tick_count % 200, 360, 300, 360, 0, 0, 0, 255] # x position changes
-  end
-
-  # Shows output of different kinds of solids on the screen
-  def solids_tech_demo
-    outputs.labels << [5, 350, 'Solids (x, y, w, h, r, g, b, a)']
-    outputs.solids << [10, 270, 50, 50]
-    outputs.solids << [70, 270, 50, 50, 0, 0, 0]
-    outputs.solids << [130, 270, 50, 50, 255, 0, 0]
-    outputs.solids << [190, 270, 50, 50, 255, 0, 0, 128]
-    outputs.solids << [250, 270, 50, 50, 0, 0, 0, 128 + state.tick_count % 128] # transparency changes
-  end
-
-  # Shows output of different kinds of borders on the screen
-  # The parameters for a border are the same as the parameters for a solid
-  def borders_tech_demo
-    outputs.labels <<  [5, 260, 'Borders (x, y, w, h, r, g, b, a)']
-    outputs.borders << [10, 180, 50, 50]
-    outputs.borders << [70, 180, 50, 50, 0, 0, 0]
-    outputs.borders << [130, 180, 50, 50, 255, 0, 0]
-    outputs.borders << [190, 180, 50, 50, 255, 0, 0, 128]
-    outputs.borders << [250, 180, 50, 50, 0, 0, 0, 128 + state.tick_count % 128] # transparency changes
-  end
-
-  # Shows output of different kinds of sprites on the screen
-  def sprites_tech_demo
-    outputs.labels <<  [5, 170, 'Sprites (x, y, w, h, path, angle, a)']
-    outputs.sprites << [10, 40, 128, 101, 'dragonruby.png']
-    outputs.sprites << [150, 40, 128, 101, 'dragonruby.png', state.tick_count % 360] # angle changes
-    outputs.sprites << [300, 40, 128, 101, 'dragonruby.png', 0, state.tick_count % 255] # transparency changes
-  end
-
-  # Holds size, alignment, color (black), and alpha (transparency) parameters
-  # Using small_font as a parameter accounts for all remaining parameters
-  # so they don't have to be repeatedly typed
-  def small_font
-    [-2, 0, 0, 0, 0, 255]
-  end
-
-  # Sets position of each row
-  # Converts given row value to pixels that DragonRuby understands
-  def row_to_px(row_number)
-    # Row 0 starts 5 units below the top of the grid.
-    # Each row afterward is 20 units lower.
-    grid.top.shift_down(5).shift_down(20 * row_number)
-  end
-
-  # Uses labels to output current game time (passage of time), and whether or not "h" was pressed
-  # If "h" is pressed, the frame is output when the key_up event occurred
-  def keyboards_tech_demo
-    outputs.labels << [460, row_to_px(0), "Current game time: #{state.tick_count}", small_font]
-    outputs.labels << [460, row_to_px(2), 'Keyboard input: inputs.keyboard.key_up.h', small_font]
-    outputs.labels << [460, row_to_px(3), 'Press "h" on the keyboard.', small_font]
-
-    if inputs.keyboard.key_up.h # if "h" key_up event occurs
-      state.h_pressed_at = state.tick_count # frame it occurred is stored
+  if args.state.circle_x && ((args.state.tick_count - args.state.enemy_time) / 60 > 3)
+    unless args.state.e1_x
+      args.state.e1_x = (args.state.tick_count * rand(args.state.random)) % args.state.screen_bound_x
+      args.state.e1_y = (args.state.tick_count * rand(args.state.random)) % args.state.screen_bound_y
+      args.state.e1_size = 75
+      bound(args, args.state.e1_x, args.state.e1_y, args.state.e1_size)
+      args.state.e1_x = args.state.x
+      args.state.e1_y = args.state.y
     end
-
-    # h_pressed_at is initially set to false, and changes once the user presses the "h" key.
-    state.h_pressed_at ||= false
-
-    outputs.labels << if state.h_pressed_at # if h is pressed (pressed_at has a frame number and is no longer false)
-                        [460, row_to_px(4), "\"h\" was pressed at time: #{state.h_pressed_at}", small_font]
-                      else # otherwise, label says "h" was never pressed
-                        [460, row_to_px(4), '"h" has never been pressed.', small_font]
-                      end
-
-    # border around keyboard input demo section
-    outputs.borders << [455, row_to_px(5), 360, row_to_px(2).shift_up(5) - row_to_px(5)]
-  end
-
-  # Sets definition for a small label
-  # Makes it easier to position labels in respect to the position of other labels
-  def small_label(x, row, message)
-    [x, row_to_px(row), message, small_font]
-  end
-
-  # Uses small labels to show whether the "a" button on the controller is down, held, or up.
-  # y value of each small label is set by calling the row_to_px method
-  def controller_tech_demo
-    x = 460
-    outputs.labels << small_label(x, 6, 'Controller one input: inputs.controller_one')
-    outputs.labels << small_label(x, 7, 'Current state of the "a" button.')
-    outputs.labels << small_label(x, 8, 'Check console window for more info.')
-
-    if inputs.controller_one.key_down.a # if "a" is in "down" state
-      outputs.labels << small_label(x, 9, "\"a\" button down: #{inputs.controller_one.key_down.a}")
-      puts "\"a\" button down at #{inputs.controller_one.key_down.a}" # prints frame the event occurred
-    elsif inputs.controller_one.key_held.a # if "a" is held down
-      outputs.labels << small_label(x, 9, "\"a\" button held: #{inputs.controller_one.key_held.a}")
-    elsif inputs.controller_one.key_up.a # if "a" is in up state
-      outputs.labels << small_label(x, 9, "\"a\" button up: #{inputs.controller_one.key_up.a}")
-      puts "\"a\" key up at #{inputs.controller_one.key_up.a}"
-    else # if no event has occurred
-      outputs.labels << small_label(x, 9, '"a" button state is nil.')
-    end
-
-    # border around controller input demo section
-    outputs.borders << [455, row_to_px(10), 360, row_to_px(6).shift_up(5) - row_to_px(10)]
-  end
-
-  # Outputs when the mouse was clicked, as well as the coordinates on the screen
-  # of where the click occurred
-  def mouse_tech_demo
-    x = 460
-
-    outputs.labels << small_label(x, 11, 'Mouse input: inputs.mouse')
-
-    if inputs.mouse.click # if click has a value and is not nil
-      state.last_mouse_click = inputs.mouse.click # coordinates of click are stored
-    end
-
-    if state.last_mouse_click # if mouse is clicked (has coordinates as value)
-      # outputs the time (frame) the click occurred, as well as how many frames have passed since the event
-      outputs.labels << small_label(x, 12,
-                                    "Mouse click happened at: #{state.last_mouse_click.created_at}, #{state.last_mouse_click.created_at_elapsed}")
-      # outputs coordinates of click
-      outputs.labels << small_label(x, 13,
-                                    "Mouse click location: #{state.last_mouse_click.point.x}, #{state.last_mouse_click.point.y}")
-    else # otherwise if the mouse has not been clicked
-      outputs.labels << small_label(x, 12, 'Mouse click has not occurred yet.')
-      outputs.labels << small_label(x, 13, 'Please click mouse.')
-    end
-  end
-
-  # Outputs whether a mouse click occurred inside or outside of a box
-  def point_to_rect_tech_demo
-    x = 460
-
-    outputs.labels << small_label(x, 15, 'Click inside the blue box maybe ---->')
-
-    box = [765, 370, 50, 50, 0, 0, 170] # blue box
-    outputs.borders << box
-
-    outputs.labels << if state.last_mouse_click # if the mouse was clicked
-                        if state.last_mouse_click.point.inside_rect? box # if mouse clicked inside box
-                          small_label(x, 16, 'Mouse click happened inside the box.')
-                        else # otherwise, if mouse was clicked outside the box
-                          small_label(x, 16, 'Mouse click happened outside the box.')
-                        end
-                      else # otherwise, if was not clicked at all
-                        small_label(x, 16, 'Mouse click has not occurred yet.') # output if the mouse was not clicked
-                      end
-
-    # border around mouse input demo section
-    outputs.borders << [455, row_to_px(14), 360, row_to_px(11).shift_up(5) - row_to_px(14)]
-  end
-
-  # Outputs a red box onto the screen. A mouse click from the user inside of the red box will output
-  # a smaller box. If two small boxes are inside of the red box, it will be determined whether or not
-  # they intersect.
-  def rect_to_rect_tech_demo
-    x = 460
-
-    outputs.labels << small_label(x, 17.5, 'Click inside the red box below.') # label with instructions
-    red_box = [460, 250, 355, 90, 170, 0, 0] # definition of the red box
-    outputs.borders << red_box # output as a border (not filled in)
-
-    # If the mouse is clicked inside the red box, two collision boxes are created.
-    if inputs.mouse.click && (inputs.mouse.click.point.inside_rect? red_box)
-      if !state.box_collision_one # if the collision_one box does not yet have a definition
-        # Subtracts 25 from the x and y positions of the click point in order to make the click point the center of the box.
-        # You can try deleting the subtraction to see how it impacts the box placement.
-        state.box_collision_one = [inputs.mouse.click.point.x - 25, inputs.mouse.click.point.y - 25, 50, 50, 180, 0,   0, 180] # sets definition
-      elsif !state.box_collision_two # if collision_two does not yet have a definition
-        state.box_collision_two = [inputs.mouse.click.point.x - 25, inputs.mouse.click.point.y - 25, 50, 50,   0, 0, 180, 180] # sets definition
-      else
-        state.box_collision_one = nil # both boxes are empty
-        state.box_collision_two = nil
+    if args.state.e1_x
+      args.state.e1_direction = args.state.tick_count % 90
+      args.outputs.sprites << [args.state.e1_x, args.state.e1_y, args.state.e1_size, args.state.e1_size,
+                               'sprites/isometric/violet.png', args.state.e1_direction]
+      collision(args, args.state.e1_x, args.state.circle_x, args.state.e1_y, args.state.circle_y,
+                args.state.e1_size, args.state.sprite_size)
+      if args.state.collisions == 1
+        ouch args
+        args.state.enemy_time = args.state.tick_count
+        args.state.e1_x = nil
+        args.state.e1_y = nil
+        args.state.kills += 1
+        score args
       end
     end
+    args.state.bullets.each do |e|
+      next unless e.exists
 
-    # If collision boxes exist, they are output onto screen inside the red box as solids
-    outputs.solids << state.box_collision_one if state.box_collision_one
+      next unless args.state.e1_x
 
-    outputs.solids << state.box_collision_two if state.box_collision_two
+      collision(args, args.state.e1_x, e.x, args.state.e1_y, e.y, args.state.e1_size, e.size)
+      next unless args.state.collisions == 1
 
-    # Outputs whether or not the two collision boxes intersect.
-    if state.box_collision_one && state.box_collision_two # if both collision_boxes are defined (and not nil or empty)
-      outputs.labels << if state.box_collision_one.intersect_rect? state.box_collision_two # if the two boxes intersect
-                          small_label(x, 23.5, 'The boxes intersect.')
-                        else # otherwise, if the two boxes do not intersect
-                          small_label(x, 23.5, 'The boxes do not intersect.')
-                        end
+      args.state.kills += 1
+      score args
+      args.state.enemy_time = args.state.tick_count
+      args.state.e1_x = nil
+      args.state.e1_y = nil
+      e.y = nil
+      e.x = nil
+      e.exists = nil
+    end
+
+  end
+end
+
+# bound(args.state.object_x, args.state.object_y, args.state.object_size)
+def bound(args, x, y, size)
+  args.state.x = 0
+  args.state.y = 0
+  y = args.state.screen_bound_y - size - 1 if y <= 0
+  y = 1 if y >= args.state.screen_bound_y - size
+  x = args.state.screen_bound_x - size - 1 if x <= 0
+  x = 1 if x >= args.state.screen_bound_x - size
+  args.state.x = x
+  args.state.y = y
+end
+
+def score(args)
+  if args.state.lives <= 1
+    args.state.highscore = args.state.current_score if args.state.current_score > args.state.highscore
+    args.state.current_score = 0
+    args.state.kills = 0
+  else
+    args.state.current_score += (args.state.lives * args.state.kills)
+    args.state.highscore = args.state.current_score if args.state.current_score > args.state.highscore
+  end
+end
+
+# This is a bullet physics function.
+def bullet_physics(args)
+  args.state.remove_array_element ||= []
+  args.state.index ||= 0
+  args.state.bullets  ||= []
+  args.state.new_tick ||= 0
+  if args.state.circle_x && args.keyboard.space && args.state.new_tick + 30 < args.state.tick_count
+    args.state.new_tick = args.state.tick_count
+    args.state.bullets << args.state.new_entity(:bullet) do |e| # declares each enemy as new entity
+      e.index = args.state.index + 1 # Index of the entry
+      args.state.index += 1 # incriment the indexing counter.
+      e.size        = args.state.sprite_size / 10
+      e.exists      = 1 # does the bullet exits
+      e.direction   = args.state.circle_direction
+      e.speed       = 10
+      e.distance    = 0
+      # Formulas for calculating bullet location in relation to the users circle.
+      formula       = args.state.sprite_size + (e.size / 2)
+      formula2      = (args.state.sprite_size - e.size) / 2
+      case e.direction
+      when 0
+        e.x       = args.state.circle_x + formula2
+        e.y       = args.state.circle_y + formula + 1
+      when 90
+        e.x       = args.state.circle_x - e.size
+        e.y       = args.state.circle_y + formula2
+      when 180
+        e.x       = args.state.circle_x + formula2
+        e.y       = args.state.circle_y - e.size
+
+      when 270
+        e.x       = args.state.circle_x + formula + 1
+        e.y       = args.state.circle_y + formula2
+      else
+        e.x       = nil
+        e.y       = nil
+      end
+      # args.state.since_last_bullet = args.state.tick_count - args.state.new_tick
+      e.time        = args.state.tick_count / 60
+      length        = 2 # In seconds
+      e.limit       = (length * 60) * e.speed # 2 seconds, or 120 frames\
+    end
+  end
+
+  args.state.bullets.each do |e|
+    if e.exists
+
+      args.outputs.sprites << [e.x, e.y, e.size, e.size, 'sprites/circle/black.png', e.direction]
+
+      case e.direction
+      when 0
+        e.y += e.speed
+      when 90
+        e.x     -= e.speed
+      when 180
+        e.y     -= e.speed
+      when 270
+        e.x     += e.speed
+      end
+
+      if e.y <= 0
+        e.y     = args.state.screen_bound_y - e.size
+      elsif  e.y >= args.state.screen_bound_y - e.size
+        e.y     = 0
+      elsif  e.x <= 0
+        e.x     = args.state.screen_bound_x - e.size
+      elsif  e.x >= args.state.screen_bound_x - e.size
+        e.x     = 0
+      end
+      e.distance += e.speed
+      collision(args, e.x, args.state.circle_x, e.y, args.state.circle_y, e.size, args.state.sprite_size)
+      if args.state.collisions == 1
+        ouch args
+        e.exists = nil
+        e.y      = nil
+        e.x      = nil
+        # args.state.bullets.shift
+      end
+      if e.distance >= e.limit
+        e.exists = nil
+        e.y      = nil
+        e.x      = nil
+        # args.state.bullets.shift
+      end
     else
-      outputs.labels << small_label(x, 23.5, '--') # if the two boxes are not defined (are nil or empty), this label is output
+      args.state.remove_array_element << e.index
+      args.state.index_nil = e.index
     end
   end
+  until args.state.remove_array_element.empty?
+    args.state.bullets.delete_at(args.state.remove_array_element[0])
+    args.state.remove_array_element.shift
 
-  # Creates a button and outputs it onto the screen using labels and borders.
-  # If the button is clicked, the color changes to make it look faded.
-  def button_tech_demo
-    x = 460
-    y = 160
-    w = 300
-    h = 50
-    state.button        ||= state.new_entity(:button_with_fade)
-
-    # Adds w.half to x and h.half + 10 to y in order to display the text inside the button's borders.
-    state.button.label  ||= [x + w.half, y + h.half + 10, 'click me and watch me fade', 0, 1]
-    state.button.border ||= [x, y, w, h]
-
-    if inputs.mouse.click&.point&.inside_rect?(state.button.border) # if mouse is clicked, and clicked inside button's border
-      state.button.clicked_at = inputs.mouse.click.created_at # stores the time the click occurred
-    end
-
-    outputs.labels << state.button.label
-    outputs.borders << state.button.border
-
-    if state.button.clicked_at # if button was clicked (variable has a value and is not nil)
-
-      # The appearance of the button changes for 0.25 seconds after the time the button is clicked at.
-      # The color changes (rgb is set to 0, 180, 80) and the transparency gradually changes.
-      # Change 0.25 to 1.25 and notice that the transparency takes longer to return to normal.
-      outputs.solids << [x, y, w, h, 0, 180, 80, 255 * state.button.clicked_at.ease(0.25.seconds, :flip)]
-    end
   end
-
-  # Creates a new button by declaring it as a new entity, and sets values.
-  def new_button_prefab(x, y, message)
-    w = 300
-    h = 50
-    button        = state.new_entity(:button_with_fade)
-    button.label  = [x + w.half, y + h.half + 10, message, 0, 1] # '+ 10' keeps label's text within button's borders
-    button.border = [x, y, w, h] # sets border definition
-    button
-  end
-
-  # If the mouse has been clicked and the click's location is inside of the button's border, that means
-  # that the button has been clicked. This method returns a boolean value.
-  def button_clicked?(button)
-    inputs.mouse.click&.point&.inside_rect?(button.border)
-  end
-
-  # Determines if button was clicked, and changes its appearance if it is clicked
-  def tick_button_prefab(button)
-    outputs.labels << button.label # outputs button's label and border
-    outputs.borders << button.border
-
-    if button_clicked? button # if button is clicked
-      button.clicked_at = inputs.mouse.click.created_at # stores the time that the button was clicked
-    end
-
-    if button.clicked_at # if clicked_at has a frame value and is not nil
-      # button is output; color changes and transparency changes for 0.25 seconds after click occurs
-      outputs.solids << [button.border.x, button.border.y, button.border.w, button.border.h,
-                         0, 180, 80, 255 * button.clicked_at.ease(0.25.seconds, :flip)] # transparency changes for 0.25 seconds
-    end
-  end
-
-  # Exports the app's game state if the export button is clicked.
-  def export_game_state_demo
-    state.export_game_state_button ||= new_button_prefab(460, 100, 'click to export app state')
-    tick_button_prefab(state.export_game_state_button) # calls method to output button
-    if button_clicked? state.export_game_state_button # if the export button is clicked
-      args.gtk.export! 'Exported from clicking the export button in the tech demo.' # the export occurs
-    end
-  end
-
-  # The mouse and keyboard focus are set to "yes" when the Dragonruby window is the active window.
-  def window_state_demo
-    m = $gtk.args.inputs.mouse.has_focus ? 'Y' : 'N' # ternary operator (similar to if statement)
-    k = $gtk.args.inputs.keyboard.has_focus ? 'Y' : 'N'
-    outputs.labels << [460, 20, "mouse focus: #{m}   keyboard focus: #{k}", small_font]
-  end
-
-  # Sets values for the horizontal separator (divides demo sections)
-  def horizontal_seperator(y, x, x2)
-    [x, y, x2, y, 150, 150, 150]
-  end
-
-  # Sets the values for the vertical separator (divides demo sections)
-  def vertical_seperator(x, y, y2)
-    [x, y, x, y2, 150, 150, 150]
-  end
-
-  # Outputs vertical and horizontal separators onto the screen to separate each demo section.
-  def render_seperators
-    outputs.lines << horizontal_seperator(505, grid.left, 445)
-    outputs.lines << horizontal_seperator(353, grid.left, 445)
-    outputs.lines << horizontal_seperator(264, grid.left, 445)
-    outputs.lines << horizontal_seperator(174, grid.left, 445)
-
-    outputs.lines << vertical_seperator(445, grid.top, grid.bottom)
-
-    outputs.lines << horizontal_seperator(690, 445, 820)
-    outputs.lines << horizontal_seperator(426, 445, 820)
-
-    outputs.lines << vertical_seperator(820, grid.top, grid.bottom)
+  args.state.index = 0
+  args.state.bullets.each do |e|
+    e.index = args.state.index
+    args.state.index += 1
   end
 end
 
-$tech_demo = TechDemo.new
+# This is an animation function for a three image animation
+def amimation(args)
+  # This breakdown would need to change if more animation frames need to be added,
+  # eg: 6 frames would need to split splits 11 times for a full loop and only 6 times for one iteration
+  # So for this case:
+  split = 60
+  time = args.state.tick_count % split
+  # cordsx/y for easy movment
+  cordsx = 540
+  cordsy = 675
+  # offset is for the second animated sprite
 
-def tick(args)
-  $tech_demo.inputs = args.inputs
-  $tech_demo.state = args.state
-  $tech_demo.grid = args.grid
-  $tech_demo.args = args
-  $tech_demo.outputs = args.render_target(:mini_map)
-  $tech_demo.tick
-  args.outputs.labels  << [830, 715, 'Render target:', [-2, 0, 0, 0, 0, 255]]
-  args.outputs.sprites << [0, 0, 1280, 720, :mini_map]
-  args.outputs.sprites << [830, 300, 675, 379, :mini_map]
-  tick_instructions args, 'Sample app shows all the rendering apis available.'
+  offset = 165
+  b = 4
+  if time < split * (1 / b)
+    args.outputs.sprites << [cordsx, cordsy, 32, 32, 'sprites/misc/dragon-1.png']
+    args.outputs.sprites << [cordsx + offset, cordsy, 32, 32, 'sprites/misc/dragon-1.png']
+  elsif (time >= split * (1 / b) && time < split * (2 / b)) || (time >= split * (3 / b))
+    args.outputs.sprites << [cordsx, cordsy, 32, 32, 'sprites/misc/dragon-2.png']
+    args.outputs.sprites << [cordsx + offset, cordsy, 32, 32, 'sprites/misc/dragon-2.png']
+  elsif time >= split * (2 / b) && time < split * (3 / b)
+    args.outputs.sprites << [cordsx, cordsy, 32, 32, 'sprites/misc/dragon-3.png']
+    args.outputs.sprites << [cordsx + offset, cordsy, 32, 32, 'sprites/misc/dragon-3.png']
+  end
 end
 
-def tick_instructions(args, text, y = 715)
-  return if args.state.key_event_occurred
+# This is a collision function.
+# Collision(args, args.state.x1, args.state.x2, args.state.y1, args.state.y2, args.state.size1, args.state.size2)
+def collision(args, x1, x2, y1, y2, size1, size2)
+  args.state.collisions = 0
+  args.state.collisions = 1 if y1 + size1 >= y2 && x1 + size1 >= x2 && y1 <= y2 + size2 && x1 <= x2 + size2
+end
 
-  if args.inputs.mouse.click ||
-     args.inputs.keyboard.directional_vector ||
-     args.inputs.keyboard.key_down.enter ||
-     args.inputs.keyboard.key_down.escape
-    args.state.key_event_occurred = true
+# Bellow is just the condensed user interface stuff
+# User interface stuff
+def user_interface(args)
+  ticks = args.state.tick_count
+  seconds = (ticks / 60).round(0)
+  args.state.seconds = seconds unless args.state.seconds
+
+  args.outputs.labels << [770, 720, 'Time Elapsed:', 8, 0, 200, 0o50, 100, 125]
+  args.state.seconds = seconds if (ticks % 3).zero?
+  args.outputs.labels << [1000, 720, args.state.seconds, 10, 0, 200, 0o50, 100, 125]
+  args.outputs.labels << [640, 700, 'The Circle Game', -1, 1, 0, 0, 0, 150]
+  args.outputs.labels << [642, 698, 'The Circle Game', -1, 1, 0, 200, 25]
+  args.outputs.labels << [10, 710, 'Lives:', -3, 0, 155, 50,  50]
+
+  args.outputs.labels << [10, 690, 'Score:', -3, 0, 155, 50,  50]
+  args.outputs.labels << [60, 690, args.state.current_score, -3, 0, 155, 50, 50] if args.state.current_score
+  args.outputs.labels << [10, 670, 'Highscore:', -3, 0, 155, 50, 50]
+  args.outputs.labels << [90, 670, args.state.highscore, -3, 0, 155, 50, 50] if args.state.highscore
+  args.outputs.lines << [0, 600, 1280, 600, 0, 0, 0, 255]
+  board_x = 540
+  board_y = 668
+  board_w = 200
+  board_h = 45
+  echo = 4
+  args.outputs.borders << [board_x, board_y, board_w, board_h, 0, 0, 200, 255]
+  args.outputs.borders << [board_x - echo, board_y - echo, board_w + echo * 2, board_h + echo * 2, 200, 0, 0, 255]
+  args.outputs.solids << [board_x - echo, board_y - echo, board_w + echo * 2, board_h + echo * 2, 35, 0, 50, 255]
+  echo -= 5
+  args.outputs.solids << [board_x - echo, board_y - echo, board_w + echo * 2, board_h + echo * 2, 25, 100, 40]
+  args.state.lives = 0 if args.state.lives.negative? || !args.state.lives
+
+  if args.state.lives == 1
+
+    args.outputs.labels << [640, 590, 'Game over', 0, 1]
+    args.state.circle_x = nil
+    args.state.circle_y = nil
+    args.state.lives = nil if (args.state.ticks_since_nil.to_i + 120) < ticks
   end
+  args.outputs.sprites << [60, 697.5,  10, 10, 'sprites/circle/black.png', 90] if args.state.lives > 1
+  args.outputs.sprites << [75, 697.5,  10, 10, 'sprites/circle/black.png', 90] if args.state.lives > 2
+  args.outputs.sprites << [90, 697.5,  10, 10, 'sprites/circle/black.png', 90] if args.state.lives > 3
+  if ticks % 255 < 127
+    args.outputs.labels << [640, 655, 'Press WASD to Move', 0, 1, 0, 0, 0, ticks % 255]
+    args.outputs.labels << [640, 625, 'Press Space to Shoot', 0, 1, 0, 0, 0, ticks % 255]
+  else
+    args.outputs.labels << [640, 655, 'Press WASD to Move', 0, 1, 0, 0, 0, 255 - ticks % 255]
+    args.outputs.labels << [640, 625, 'Press Space to Shoot', 0, 1, 0, 0, 0, 255 - ticks % 255]
+  end
+end
 
-  args.outputs.debug << [0, y - 50, 1280, 60].solid
-  args.outputs.debug << [640, y, text, 1, 1, 255, 255, 255].label
-  args.outputs.debug << [640, y - 25, '(click to dismiss instructions)', -2, 1, 255, 255, 255].label
+def ouch(args)
+  args.state.lives -= 1
+  args.state.circle_life_length = args.state.tick_count - args.state.ticks_since_nil
+  args.state.ticks_since_nil = args.state.tick_count
+end
+
+def sprite(args)
+  ticks = args.state.tick_count
+  sprite_size = 50
+  args.state.sprite_size = sprite_size
+  # Screen Boundries set to not interfear with the user interface
+  screen_bound_x = 1280
+  screen_bound_y = 600
+  args.state.screen_bound_x = screen_bound_x
+  args.state.screen_bound_y = screen_bound_y
+  args.state.ticks_since_nil ||= 0
+  args.state.highscore ||= 0
+  if !args.state.circle_x && args.state.lives <= 0
+    args.state.circle_x = (screen_bound_x - sprite_size) / 2
+    args.state.circle_y = (screen_bound_y - sprite_size) / 2
+    args.state.circle_direction = 0
+    args.state.speed = 6
+    args.state.lives = 4
+    args.state.circle_life_length = args.state.tick_count
+    args.state.kills = 0
+    args.state.current_score = 0
+    # args.state.since_last_bullet = 0
+    args.state.ticks_since_nil = 0
+  end
+  if args.state.circle_x
+    args.outputs.sprites << [args.state.circle_x, args.state.circle_y, sprite_size, sprite_size,
+                             'sprites/hexagon/blue.png', args.state.circle_direction]
+    if args.inputs.keyboard.d
+      args.state.circle_x += args.state.speed
+      args.state.circle_direction = 270
+    end
+    if args.inputs.keyboard.a
+      args.state.circle_x -= args.state.speed
+      args.state.circle_direction = 90
+    end
+    if args.inputs.keyboard.w
+      args.state.circle_y += args.state.speed
+      args.state.circle_direction = 0
+    end
+    if args.inputs.keyboard.s
+      args.state.circle_y -= args.state.speed
+      args.state.circle_direction = 180
+    end
+    # Bounds are set so the user wraps
+    if args.state.circle_y <= 0
+      args.state.circle_y = screen_bound_y - sprite_size - 1
+    elsif  args.state.circle_y >= screen_bound_y - sprite_size
+      args.state.circle_y = 1
+    elsif  args.state.circle_x <= 0
+      args.state.circle_x = screen_bound_x - sprite_size - 1
+    elsif  args.state.circle_x >= screen_bound_x - sprite_size
+      args.state.circle_x = 1
+    end
+  end
 end
