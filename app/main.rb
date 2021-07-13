@@ -1,10 +1,10 @@
-$t = 0
 def tick a
-  O ||= (C, D=0, 1; a.outputs)
-  C, D = D, C
-  O[0] if 2>$t+=1
-  a.sprites << (
-    O[C].sprites << [a.solids<<[$grid.rect],D,1,F=300]
-  )
-  O[C].primitives << [[600+($t*20).sin*90,F+($t*20).cos*90,'. . .',10,0,F,F,F,150].label,[611,331,58,58].solid]
+A||=(O=a.outputs)[:p].solids<<[0,0,1e4,720,[255]*3]
+o=[]
+O.background_color=[0]*3
+g=a.tick_count.sin*2
+160.step(600,10){|y|440.step(880,10){|x|b=(y*g).to_i.sin*20
+c=(x*g).to_i.cos*20
+o<<[x+b,y+c,9,9,:p]}}
+O.sprites<<o
 end
