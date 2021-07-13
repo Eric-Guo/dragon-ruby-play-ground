@@ -1,10 +1,7 @@
-M,B=Math,0
 def tick a
-s=a.outputs.solids
-s<<[0,0,C=1e4,C]
-B+=a.tick_count.cos/1e3
-100.step(600,12){|y|100.step(600,12){|x|
-e=(M.sin(y*B)+(M.cos(x)))*h=200
-f=(M.sin(x*B)+(M.cos(y)))*h
-s<<[x,y,8,8,(e+f).abs-10,(g=e-f).abs-50,g.abs-50]}}
+O=a.outputs
+(O[A=:a];O[B=:b])if 2>$t+=1
+A,B=B,A
+a.sprites<<(O[A].sprites<<[a.solids<<[0,0,1280,720],B,45,c=255])
+O[A].primitives<<[600+$t.sin*25,d=300+$t.cos*25,$t.cos*10,$t.sin*100,r=(Math.atan($t.cos)*d),r+$t.sin*c].solid
 end
