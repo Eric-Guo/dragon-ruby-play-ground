@@ -1,5 +1,13 @@
-$a = 0
+$t = 0
+
 def tick a
-(o=a.outputs).background_color=[0]*3
-360.times{|h|o.lines<<[640+h.sin*300,380+h.cos*300,640+(m=Math).cos(h*$a+=1e-06)*150,360+m.sin(h*$a)*150,[255]*3]}
+  $t+=1
+  srand 1
+  16.map do
+    x,y=2.map{rand 1e3}
+    h=1+rand(75)
+    g=(rand+3.6*$t*(0.5-rand)).to_i
+    c=[15,105,160].sample
+    0.step(800,20){|j|a.outputs.solids<<[j,-j].map{|n|[x+g.cos*n,y+g.sin*n,h,h,c]}}
+  end
 end
