@@ -1,9 +1,9 @@
-$i = 0
+M,F,A=Math,255,0
 def tick a
-  B=a.outputs[:r].solids<<[A=0,0,1e2,1e4,F=255,F,F]
-  a.solids<<[0,0,2e3,1e3,0,0,0]
-  a.sprites<<960.map do
-    [638,360,w=($i+=3).sin*F*1.5,h=$i.sin*F,:r,A+=3,5,F*w,-F*(w+h),-F*h]
+  A += 1.57
+  a.outputs[:r].solids<<[0,0,1280,720,F,F,F] if A<2
+  a.sprites<<(0..360).map do |i|
+    w,h=M.sin(i)*F,M.cos(i)*F
+    [638,360,w,h,:r,A,10,F-F*M.atan(w),F*M.atan(w+h),F-F*M.atan(h)]
   end
-  $i+=1
 end
