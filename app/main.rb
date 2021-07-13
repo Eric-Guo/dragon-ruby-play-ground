@@ -1,5 +1,10 @@
-$t = 0
+M,B=Math,0
 def tick a
-O=a.outputs
-(O[A=:a];O[B=:b];O[:p].solids<<[S=[0,0,W=1280,H=720],[F=255]*3])if 3>$t+=2;A,B=B,A;O[A].sprites<<[a.sprites<<[S,B],[S,:p,0,V=40,0,0,0],32.map_with_ys(18){|x,y|[V*x,20*y+V*($t+x*V).sin-V,V,V,:p,$t,F,c=(V*x+$t).clamp_wrap(0,F),2*c,3*c]}]
+s=a.outputs.solids
+s<<[0,0,C=1e4,C]
+B+=a.tick_count.cos/1e3
+100.step(600,12){|y|100.step(600,12){|x|
+e=(M.sin(y*B)+(M.cos(x)))*h=200
+f=(M.sin(x*B)+(M.cos(y)))*h
+s<<[x,y,8,8,(e+f).abs-10,(g=e-f).abs-50,g.abs-50]}}
 end
