@@ -1,16 +1,11 @@
-def tick(a)
-  o = a.outputs
-  o.background_color = [0] * 3
-  27.times do |i|
-    v = i + a.state.tick_count / 60
-    s = Math.sin(v)
-    s2 = 2 * Math.sin(v + 1)
-    p = (0..8).map do |n|
-      z = ((n / 4).to_i % 2 - 7 + s) / 600
-      [(n % 2 - 5 + i % 9) / z + 640, ((n / 2).to_i % 2 + s2) / z + 360]
-    end
-    o.lines << p.combination(2).map do |k, l|
-      [*k, *l, i * 36, (i * s * 9), (i * s2 * 9)]
+def tick a
+  o=a.outputs
+  o.background_color=[H=720,W=1280,F=255]
+  A||=o[:r].solids<<[G=0,0,W,H,F,F,F]
+  G+=1
+  0.step(W,B=40) do |i|
+    0.step(H,B) do |j|
+      a.sprites<<[i,j,B,B,:r,(i+j).sin*G*2,F,(i-G).sin*j,(i+G).cos*(j/3),j/3]
     end
   end
 end
