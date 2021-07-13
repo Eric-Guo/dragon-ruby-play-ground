@@ -1,10 +1,5 @@
+$a = 0
 def tick a
-A||=(O=a.outputs)[:p].solids<<[0,0,1e4,720,[255]*3]
-o=[]
-O.background_color=[0]*3
-g=a.tick_count.sin*2
-160.step(600,10){|y|440.step(880,10){|x|b=(y*g).to_i.sin*20
-c=(x*g).to_i.cos*20
-o<<[x+b,y+c,9,9,:p]}}
-O.sprites<<o
+(o=a.outputs).background_color=[0]*3
+360.times{|h|o.lines<<[640+h.sin*300,380+h.cos*300,640+(m=Math).cos(h*$a+=1e-06)*150,360+m.sin(h*$a)*150,[255]*3]}
 end
