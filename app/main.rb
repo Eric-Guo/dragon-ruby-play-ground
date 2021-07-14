@@ -1,65 +1,34 @@
-HEIGHT = 200
-
-DEGREES_TO_RADIANS = Math::PI / 180
-
-INRADIUS = HEIGHT / 2
-CENTERX = 1280 / 2
-CENTERY = 720 / 2
-
 def tick(args)
-  slider(args)
-
-  sideNum = $sliderValue
-  angle = 360 / sideNum
-  sidelength = 2 * INRADIUS * Math.tan((180 / sideNum) * DEGREES_TO_RADIANS)
-
-  # Center Crosshair
-  printme = []
-  @crosshair ||= [{ x: CENTERX - 10, y: CENTERY, x2: CENTERX + 10, y2: CENTERY },
-                  { x: CENTERX, y: CENTERY - 10, x2: CENTERX, y2: CENTERY + 10 }]
-  printme << @crosshair
-
-  sides = []
-  referencePoint = [CENTERX - (sidelength / 2), CENTERY - INRADIUS]
-  angleIndex = 0
-  sideNum.each do
-    newPoint = pointAtAngleDistance(point: referencePoint, angle: angleIndex, distance: sidelength)
-    sides << { x: referencePoint[0], y: referencePoint[1], x2: newPoint[0], y2: newPoint[1] }
-    referencePoint = newPoint
-    angleIndex += angle
+  args.state.player.x ||= 1280/2
+  args.state.player.y ||= 720/2
+  args.state.player.w ||= 16
+  args.state.player.h ||= 16
+  args.outputs.sprites << {
+    x: args.state.player.x,
+    y: args.state.player.y,
+    w: args.state.player.w,
+    h: args.state.player.h,
+    path: 'sprites/square/green.png'
+  }
+  if args.inputs.keyboard.right
+    args.state.player.x += 2
+  elsif args.inputs.keyboard.left
+    args.state.player.x -= 2
   end
-
-  printme << sides
-
-  args.outputs.lines << printme
-end
-
-def pointAtAngleDistance(point:, angle:, distance:)
-  x2 = point[0] + (distance * Math.cos(angle * DEGREES_TO_RADIANS))
-  y2 = point[1] + (distance * Math.sin(angle * DEGREES_TO_RADIANS))
-  [x2, y2]
-end
-
-def slider(args)
-  width = 300
-  start = CENTERX - width / 2
-  sliderLines = []
-
-  $centerLine ||= { x: start, y: 150, x2: start + width, y2: 150 }
-  sliderLines << $centerLine
-
-  $sliderHandle ||= { x: start + width / 2 - 10, y: 125, w: 20, h: 50 }
-
-  if args.inputs.mouse
-    $sliderHandle[:x] = args.inputs.mouse.x - 10
-    $sliderHandle[:x] = start if $sliderHandle[:x] < start
-    $sliderHandle[:x] = start + width - 20 if $sliderHandle[:x] > (start + width)
+  if args.inputs.keyboard.up
+    args.state.player.y += 2
+  elsif args.inputs.keyboard.down
+    args.state.player.y -= 2
   end
-
-  $sliderValue = ($sliderHandle[:x] - start) / 20
-  $sliderValue = $sliderValue.round(0)
-
-  args.outputs.borders << $sliderHandle
-
-  args.outputs.lines << sliderLines
+  # make sure the player's x and y position
+  # are clamped to the the grid's minimum and
+  # maximum width and height
+  args.state.player.x = args.state.player.x.clamp(
+    args.grid.left,
+    args.grid.right - args.state.player.w
+  )
+  args.state.player.y = args.state.player.y.clamp(
+    args.grid.bottom,
+    args.grid.top - args.state.player.h
+  )
 end
