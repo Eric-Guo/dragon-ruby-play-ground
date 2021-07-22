@@ -1,62 +1,80 @@
 def tick(args)
-  # define gravity
-  args.state.gravity    = -1
-  # place the player in the center of the
-  # grid horizontally and on the floor (y = 0)
-  args.state.player.x    ||= args.grid.w.half
-  args.state.player.y    ||= 0
-  args.state.player.size ||= 10
-  args.state.player.dy   ||= 0
+  # https://gist.github.com/amirrajan/83c368bfc4f153abdfba995458d8943a
+  defaults(args)
+  input(args)
+  render(args)
+  calc(args)
+end
 
-  args.state.player.action ||= :jumping
-  args.state.jump.power           = 5
-  args.state.jump.increase_frames = 15
-  args.state.jump.increase_power  = 1
-
-  args.outputs.sprites << {
-    x: args.state.player.x -
-       args.state.player.size.half,
-    y: args.state.player.y,
-    w: args.state.player.size,
-    h: args.state.player.size,
-    path: 'sprites/square/red.png'
-  }
-
-  if args.inputs.keyboard.key_down.space && (args.state.player.action == :standing)
-    args.state.player.action = :jumping
-    args.state.player.dy = args.state.jump.power
-    current_frame = args.state.tick_count
-    args.state.player.action_at = current_frame
-  end
-
-  if args.inputs.keyboard.key_held.space
-    is_jumping = args.state.player.action == :jumping
-    time_of_jump = args.state.player.action_at
-    jump_elapsed_time = time_of_jump.elapsed_time
-    time_allowed = args.state.jump.increase_frames
-    if is_jumping && jump_elapsed_time < time_allowed
-      power_to_add = args.state.jump.increase_power
-      args.state.player.dy += power_to_add
-    end
-  end
-
-  # reset the player's y and dy if r
-  # is pressed on the keyboard
-  if args.inputs.keyboard.key_down.r
-    args.state.player.y  = 0
-    args.state.player.dy = 0
-  end
-
-  # apply gravity and dy if the player is jumping
-  if args.state.player.action == :jumping
-    args.state.player.y  += args.state.player.dy
-    args.state.player.dy += args.state.gravity
-  end
-
-  # set the action to :standing when
-  # the player hits the ground
-  if args.state.player.y < 0
-    args.state.player.y      = 0
-    args.state.player.action = :standing
+def input(_args)
+  if !$gtk.args.inputs.keyboard.key_down.space
+    nil
+  else
+    $state.box.status = if $state.box.status == :moving
+                          :stopped
+                        else
+                          :moving
+                        end
   end
 end
+
+def render(_args)
+  $gtk.args.outputs.primitives << ({ x: $state.box.x, y: $state.box.y, w: $state.box.size,
+                                     h: $state.box.size }).merge($state.box.color).to_solid
+end
+
+def list_get_random(t)
+  t[rand(t.length)]
+end
+
+def calc(_args)
+  if $state.box.status != :moving
+    nil
+  else
+    $state.box.x = ($state.box.x + $state.box.dx * $state.box.speed)
+    $state.box.y = ($state.box.y + $state.box.dy * $state.box.speed)
+    if $state.box.x + $state.box.size > $gtk.args.grid.w
+      $state.box.x = ($gtk.args.grid.w - $state.box.size)
+      $state.box.dx = (-1)
+      $state.box.color = (list_get_random($colors))
+    elsif $state.box.x.negative?
+      $state.box.x = 0
+      $state.box.dx = 1
+      $state.box.color = (list_get_random($colors))
+    end
+    if $state.box.y + $state.box.size > $gtk.args.grid.h
+      $state.box.y = ($gtk.args.grid.h - $state.box.size)
+      $state.box.dy = (-1)
+      $state.box.color = (list_get_random($colors))
+    elsif $state.box.y.negative?
+      $state.box.y = 0
+      $state.box.dy = 1
+      $state.box.color = (list_get_random($colors))
+    end
+  end
+end
+
+def list_sublist_from_start_from_start(source, at1, at2)
+  start = at1
+  finish = at2
+  source[start..finish]
+end
+
+def defaults(_args)
+  $state.box.size ||= 50
+  $state.box.speed ||= 1
+  $state.box.status ||= :moving
+  $state.box.x ||= ($gtk.args.grid.w_half - $state.box.size / 2)
+  $state.box.y ||= ($gtk.args.grid.h_half - $state.box.size / 2)
+  $state.box.dx ||= list_get_random((list_sublist_from_start_from_start([1, -1, nil], 0, 1)))
+  $state.box.dy ||= list_get_random((list_sublist_from_start_from_start([1, -1, nil], 0, 1)))
+  $state.box.color ||= list_get_random($colors)
+end
+
+$colors = []
+$colors[0] = { r: 255, g: 0, b: 0, a: 255 }
+$colors[1] = { r: 255, g: 165, b: 0, a: 255 }
+$colors[2] = { r: 0, g: 255, b: 0, a: 255 }
+$colors[3] = { r: 0, g: 0, b: 255, a: 255 }
+$colors[4] = { r: 75, g: 0, b: 130, a: 255 }
+$colors[5] = { r: 127, g: 0, b: 255, a: 255 }
