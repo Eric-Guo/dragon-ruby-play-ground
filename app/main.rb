@@ -1,49 +1,16 @@
 def tick args
   ticks = args.state.tick_count
+  text_w, text_h = args.gtk.calcstringbox(ticks.to_s, 5)
 
-  board_x = 50
-  board_y = 60
-  board_w = 50
-  board_h = 50
+  board_w = text_w
+  board_h = text_h
+  board_x = (1280 - board_w) / 2
+  board_y = (720 - board_h) / 2
 
-  args.outputs.borders << [board_x,  board_y,
-     board_w,  board_h, 0,   0,      0,  255]
+  args.outputs.labels << [board_x + board_w / 2, board_y + board_h, ticks, 5, 1, 0, 255, 0, 255]
+  args.outputs.lines << [board_x, board_y, board_x + board_w, board_y + board_h, 100, 100, 100, 255]
+  args.outputs.lines << [board_x, board_y + board_h, board_x + board_w, board_y, 50, 50, 50, 255]
 
-  args.outputs.solids << [board_x+6, board_y+6,
-    board_w-12, board_h-12, 35, 0, 50, 255]
-
-
-  args.outputs.borders << [board_x+ticks*2,  board_y+ticks,
-    board_w,  board_h, 200,   0,      0,  255]
-
-  args.outputs.solids << [board_x+6+ticks*2, board_y+6+ticks,
-    board_w-12, board_h-12, 200, 0, 0, 255]
-
-
-  args.outputs.borders << [board_x+ticks,  board_y+ticks,
-    board_w,  board_h, 0,   200,      0,  255]
-
-  args.outputs.solids << [board_x+6+ticks, board_y+6+ticks,
-    board_w-12, board_h-12, 0, 200, 0, 255]
-
-
-  args.outputs.borders << [board_x,  board_y+ticks,
-    board_w,  board_h, 0,   0,      200,  255]
-
-  args.outputs.solids << [board_x+6, board_y+6+ticks,
-    board_w-12, board_h-12, 0, 0, 200, 255]
-
-
-  args.outputs.borders << [board_x+ticks,  board_y,
-    board_w,  board_h, 0,   100,      100,  255]
-
-  args.outputs.solids << [board_x+6+ticks, board_y+6,
-    board_w-12, board_h-12, 0, 100, 100, 255]
-
-
-  args.outputs.borders << [board_x+ticks*2,  board_y,
-    board_w,  board_h, 100,   0,      200,  255]
-
-  args.outputs.solids << [board_x+ticks*2+6, board_y+6,
-    board_w-12, board_h-12, 100, 0, 200, 255]
+  args.outputs.borders << [board_x, board_y, board_w, board_h, 0, 0, 200, 255]
+  args.outputs.solids << [board_x+1, board_y+1, board_w-2, board_h-2, 35, 0, 50, 100]
 end
