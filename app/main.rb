@@ -1,76 +1,131 @@
-# The text from the gist has been loaded.
-# Click the Run game! button to execute the code.
+RAYS = 128
+SPLIT = 8
+RAYSPERPASS = 4
+CLEAR = 60
+DRAW_RAYS = true
 
-# http://fiddle.dragonruby.org?share=https://gist.github.com/amirrajan/2f63f4d2fc97a81b087e6b4e6bd5bd92
+MAX = 500
+ACCURACY = 2 # Accepts numbers 1 or 2. For some reason 3 or greater crashes? Lower is more accurate, but slower
+
+DEGREES_TO_RADIANS = Math::PI / 180
+ANGLE = 360 / RAYS
+
+def clearRays
+  $rayArray = []
+end
 
 def tick args
-    xa = 100 + ((args.state.tick_count) % 300)
-    xb = 550 + ((args.state.tick_count/2) % 357)
-    xc = 440 + ((args.state.tick_count) % 413)
-    xd = 1000 - ((args.state.tick_count / 3) % 988)
-    ya = 300 + ((args.state.tick_count) % 351)
-    yb = 400 + (args.state.tick_count % 277)
-    yc = 700 - (args.state.tick_count % 699)
-    yd = 700 - ((args.state.tick_count / 3) % 601)
 
-#   args.outputs.lines << bezier(xa, ya,
-#                               xb, yb,
-#                               xc, yc,
-#                               xd, yd,
-#                               0)
+  mapStuff(args)
 
-  args.outputs.lines << bezier(xa, ya,
-                               xb, yb,
-                               xc, yc,
-                               xd, yd,
-                               30)
-end
+  # Raycasting
+  $rayArray ||= []
 
-
-def bezier x1, y1, x2, y2, x3, y3, x4, y4, step
-  step ||= 0
-  color = [0, 0, 0]
-  points = points_for_bezier [x1, y1], [x2, y2], [x3, y3], [x4, y4], step
-
-  points.each_cons(2).map do |p1, p2|
-    [*p1, *p2, color]
+  if args.state.tick_count.mod(CLEAR) == 0
+    clearRays
   end
-end
 
-def points_for_bezier p1, p2, p3, p4, step
-  if step == 0
-    [p1, p2, p3, p4]
-  else
+  passIDX = 0
+  $splitIDX ||= 0
+  $offset ||= 0
 
-    t_step = 1.fdiv(step + 1)
-    t = 0
-    t += t_step
-    points = []
-    while t < 1
-      points << [
-        b_for_t(p1.x, p2.x, p3.x, p4.x, t),
-        b_for_t(p1.y, p2.y, p3.y, p4.y, t),
-      ]
-      t += t_step
+  until passIDX > RAYSPERPASS
+
+    currentRay = $splitIDX * ( RAYS / SPLIT) + $offset
+    currentAngle = ANGLE * currentRay
+
+    $rayArray[currentRay] = calcRay(args, currentAngle)
+
+    $splitIDX += 1
+
+    if $splitIDX >= SPLIT
+      $splitIDX = 0
+      $offset += 1
     end
 
-    [
-      p1,
-      *points,
-      p4
-    ]
+    passIDX += 1
+
+    #labels = [passIDX, $splitIDX, $offset]
+    #args.outputs.labels [500, 360, "#{labels}"]
+
+  end
+
+    if $offset > RAYS / SPLIT
+      $offset = 0
+    end
+
+  playerBox = {x: $playerX, y: $playerY, w: $playerWidth, h: $playerWidth, r: 0, g: 255, b: 0, primitive_marker: :solid}
+
+  # Print
+  args.outputs.labels << {x: 20, y: 600, text: "Use arrow keys to move."}
+
+  if DRAW_RAYS == true; args.outputs.primitives << $rayArray; end
+  args.outputs.primitives << playerBox
+  args.outputs.primitives << [1280 / 2, 700, "Rays: #{RAYS}, Split: #{SPLIT}, Pass: #{RAYSPERPASS}, Clear: #{CLEAR}, Draw: #{DRAW_RAYS}", 0, 1].label
+  args.outputs.debug << args.gtk.framerate_diagnostics_primitives
+end
+
+def calcRay (args, angle)
+
+  collision = false
+  length = 0
+
+  until collision or length == MAX
+    maxX = $playerX + 16 + (length * Math.cos(angle * DEGREES_TO_RADIANS))
+    maxY = $playerY + 16 + (length * Math.sin(angle * DEGREES_TO_RADIANS))
+
+    line = {x: $playerX + 16, y: $playerY + 16, x2: maxX, y2: maxY}
+    $obstacles.each { | obstacle |
+
+    if obstacle.intersect_rect? [line[:x2], line[:y2], 1, 1]
+      collision = true
+    else
+      length += ACCURACY
+    end
+  }
+  end
+  return line
+end
+
+# Make random numbers slightly easier
+def randr (min, max)
+  rand(max - min) + min
+end
+
+def mapStuff (args)
+  # Spawn Obstacles
+  $obstacles ||= []
+  if $obstacles == []
+    spawnQueue = 10
+    until spawnQueue == 0
+      $obstacles << {x: randr(0, 1280), y: randr(0, 720), w: randr(32, 256), h: randr(32, 256), r: 256, g: 0, b: 0, primitive_marker: :solid}
+      spawnQueue -= 1
+    end
+  end
+
+  # Print
+  args.outputs.primitives << $obstacles
+
+  # Define Player
+  $playerX ||= 1280 / 2
+  $playerY ||= 720 / 2
+  $playerWidth ||= 32
+  $playerSpeed ||= 5
+
+  # Move Player
+  initialx = $playerX
+  initialy = $playerY
+
+  if args.inputs.right
+    $playerX += $playerSpeed
+  end
+  if args.inputs.left
+    $playerX -= $playerSpeed
+  end
+  if args.inputs.up
+    $playerY += $playerSpeed
+  end
+  if args.inputs.down
+    $playerY -= $playerSpeed
   end
 end
-
-def b_for_t v0, v1, v2, v3, t
-  pow(1 - t, 3) * v0 +
-  3 * pow(1 - t, 2) * t * v1 +
-  3 * (1 - t) * pow(t, 2) * v2 +
-  pow(t, 3) * v3
-end
-
-def pow n, to
-  n ** to
-end
-
-
