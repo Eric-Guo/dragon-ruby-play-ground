@@ -1,18 +1,25 @@
+# frozen_string_literal: true
+
 $gtk.reset
+R = 340
+N = 72 * 3
 
 def tick(args)
-  clear_target = args.state.tick_count.zero? || args.inputs.keyboard.key_down.space
-  args.render_target(:accumulation).clear_before_render = clear_target
-  args.render_target(:accumulation).lines << {
-    x: 640,
-    y: 360,
-    x2: args.inputs.mouse.x,
-    y2: args.inputs.mouse.y,
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 255
-  }
-
-  args.outputs.sprites << [ 0, 0, 1280, 720, :accumulation]
+  (0..N).each do |i|
+    theta = 2 * Math::PI * (i / N)
+    y = R * Math.sin(theta)
+    x = R * Math.cos(theta)
+    y2 = R * Math.sin(2 * theta)
+    x2 = R * Math.cos(2 * theta)
+    args.outputs.lines << {
+      x: x + 640,
+      y: y + 360,
+      x2: x2 + 640,
+      y2: y2 + 360,
+      r: 0,
+      g: 0,
+      b: 0,
+      a: 255
+    }
+  end
 end
