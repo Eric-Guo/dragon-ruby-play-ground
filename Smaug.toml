@@ -10,7 +10,7 @@ compile_ruby = false
 
 [dragonruby]
 version = "3.0"
-edition = "pro"
+edition = ""
 
 [dependencies]
 
