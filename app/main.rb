@@ -4,7 +4,10 @@ def tick(args)
   args.outputs.background_color = [63, 63, 63]
   args.outputs.debug << [10, 720, "FPS #{args.gtk.current_framerate.round}"].label
 
-  $gtk.reset if args.inputs.keyboard.key_down.space || args.inputs.mouse.click
+  if args.inputs.keyboard.key_down.space || args.inputs.mouse.click
+    args.outputs.static_solids.clear
+    args.outputs.static_borders.clear
+  end
 
   return if args.state.tick_count.zero?
 
