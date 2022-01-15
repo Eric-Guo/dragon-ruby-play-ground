@@ -1,129 +1,164 @@
 # frozen_string_literal: true
 
-class Elements
-  def initialize(size)
-    @size = size
-    @max_x_ordinal = 1280.idiv size
-    @element_lookup = {}
-    @elements = []
-  end
-
-  def add_element(x_ordinal, y_ordinal)
-    return nil if @element_lookup.dig x_ordinal, y_ordinal
-
-    element = Element.new x_ordinal, y_ordinal, @size
-    @elements << element
-    rehash_elements
-    element
-  end
-
-  def tick
-    fn.each_send @elements, self, :move_element
-    rehash_elements
-  end
-
-  def move_element(element)
-    if below_empty?(element) && element.y_ordinal != 0
-      element.move 0, -1
-    elsif below_left_empty?(element) && element.y_ordinal != 0 && element.x_ordinal != 0
-      element.move(-1, -1)
-    elsif below_right_empty?(element) && element.y_ordinal != 0 && element.x_ordinal != @max_x_ordinal
-      element.move  1, -1
-    end
-  end
-
-  def element_count
-    @elements.length
-  end
-
-  def rehash_elements
-    @element_lookup.clear
-    fn.each_send @elements, self, :rehash_element
-  end
-
-  def rehash_element(element)
-    @element_lookup[element.x_ordinal] ||= {}
-    @element_lookup[element.x_ordinal][element.y_ordinal] = element
-  end
-
-  def below_empty?(e)
-    return false if e.y_ordinal.zero?
-    return true  unless @element_lookup[e.x_ordinal]
-    return true  unless @element_lookup[e.x_ordinal][e.y_ordinal - 1]
-    return false if @element_lookup[e.x_ordinal][e.y_ordinal - 1]
-
-    true
-  end
-
-  def below_left_empty?(e)
-    return false if e.y_ordinal.zero?
-    return false if e.x_ordinal.zero?
-    return true  unless @element_lookup[e.x_ordinal - 1]
-    return true  unless @element_lookup[e.x_ordinal - 1][e.y_ordinal - 1]
-    return false if @element_lookup[e.x_ordinal - 1][e.y_ordinal - 1]
-
-    true
-  end
-
-  def below_right_empty?(e)
-    return false if e.y_ordinal.zero?
-    return false if e.x_ordinal == 256
-    return true  unless @element_lookup[e.x_ordinal + 1]
-    return true  unless @element_lookup[e.x_ordinal + 1][e.y_ordinal - 1]
-    return false if @element_lookup[e.x_ordinal + 1][e.y_ordinal - 1]
-
-    true
-  end
-end
-
-class Element
-  attr_sprite
-  attr :x_ordinal, :y_ordinal
-
-  def initialize(x_ordinal, y_ordinal, s)
-    @x_ordinal     = x_ordinal
-    @y_ordinal     = y_ordinal
-    @s             = s
-    @x             = x_ordinal * s
-    @y             = y_ordinal * s
-    @w             = s
-    @h             = s
-    @path          = 'sprites/sand-element.png'
-  end
-
-  def draw_override(ffi)
-    ffi.draw_sprite @x, @y, @w, @h, @path
-  end
-
-  def move(dx, dy)
-    @y_ordinal += dy
-    @x_ordinal += dx
-    @y = @y_ordinal * @s
-    @x = @x_ordinal * @s
-  end
-end
-
 def tick(args)
-  args.state.size        ||= 10
-  args.state.mouse_state ||= :up
-  @elements              ||= Elements.new args.state.size
-
-  if args.inputs.mouse.down
-    args.state.mouse_state = :held
-  elsif args.inputs.mouse.up
-    args.state.mouse_state = :released
-  end
-
-  if args.state.mouse_state == :held
-    added = @elements.add_element args.inputs.mouse.x.idiv(args.state.size), args.inputs.mouse.y.idiv(args.state.size)
-    args.outputs.static_sprites << added if added
-  end
-
-  @elements.tick
-
-  args.outputs.labels << { x: 30, y: 30.from_top, text: args.gtk.current_framerate.to_sf.to_s }
-  args.outputs.labels << { x: 30, y: 60.from_top, text: @elements.element_count.to_s }
+  defaults args
+  render args
+  calc args
+  input args
 end
 
-$gtk.reset
-@elements = nil
+def defaults(args)
+  args.state.ball.debounce       ||= 3 * 60
+  args.state.ball.size           ||= 10
+  args.state.ball.size_half      ||= args.state.ball.size / 2
+  args.state.ball.x              ||= 640
+  args.state.ball.y              ||= 360
+  args.state.ball.dx             ||= 5.randomize(:sign)
+  args.state.ball.dy             ||= 5.randomize(:sign)
+  args.state.left_paddle.y       ||= 360
+  args.state.right_paddle.y      ||= 360
+  args.state.paddle.h            ||= 120
+  args.state.paddle.w            ||= 10
+  args.state.left_paddle.score   ||= 0
+  args.state.right_paddle.score  ||= 0
+end
+
+def render(args)
+  render_center_line args
+  render_scores args
+  render_countdown args
+  render_ball args
+  render_paddles args
+  render_instructions args
+end
+
+begin :render_methods
+      def render_center_line(args)
+        args.outputs.lines  << [640, 0, 640, 720]
+      end
+
+      def render_scores(args)
+        args.outputs.labels << [
+          [320, 650, args.state.left_paddle.score, 10, 1],
+          [960, 650, args.state.right_paddle.score, 10, 1]
+        ]
+      end
+
+      def render_countdown(args)
+        return unless args.state.ball.debounce.positive?
+
+        args.outputs.labels << [640, 360, '%.2f' % args.state.ball.debounce.fdiv(60), 10, 1]
+      end
+
+      def render_ball(args)
+        args.outputs.solids << solid_ball(args)
+      end
+
+      def render_paddles(args)
+        args.outputs.solids << solid_left_paddle(args)
+        args.outputs.solids << solid_right_paddle(args)
+      end
+
+      def render_instructions(args)
+        args.outputs.labels << [320, 30, 'W and S keys to move left paddle.',  0, 1]
+        args.outputs.labels << [920, 30, 'O and L keys to move right paddle.', 0, 1]
+      end
+end
+
+def calc(args)
+  args.state.ball.debounce -= 1 and return if args.state.ball.debounce.positive?
+
+  calc_move_ball args
+  calc_collision_with_left_paddle args
+  calc_collision_with_right_paddle args
+  calc_collision_with_walls args
+end
+
+begin :calc_methods
+      def calc_move_ball(args)
+        args.state.ball.x += args.state.ball.dx
+        args.state.ball.y += args.state.ball.dy
+      end
+
+      def calc_collision_with_left_paddle(args)
+        if solid_left_paddle(args).intersect_rect? solid_ball(args)
+          args.state.ball.dx *= -1
+        elsif args.state.ball.x.negative?
+          args.state.right_paddle.score += 1
+          calc_reset_round args
+        end
+      end
+
+      def calc_collision_with_right_paddle(args)
+        if solid_right_paddle(args).intersect_rect? solid_ball(args)
+          args.state.ball.dx *= -1
+        elsif args.state.ball.x > 1280
+          args.state.left_paddle.score += 1
+          calc_reset_round args
+        end
+      end
+
+      def calc_collision_with_walls(args)
+        if args.state.ball.y + args.state.ball.size_half > 720
+          args.state.ball.y = 720 - args.state.ball.size_half
+          args.state.ball.dy *= -1
+        elsif (args.state.ball.y - args.state.ball.size_half).negative?
+          args.state.ball.y = args.state.ball.size_half
+          args.state.ball.dy *= -1
+        end
+      end
+
+      def calc_reset_round(args)
+        args.state.ball.x = 640
+        args.state.ball.y = 360
+        args.state.ball.dx = 5.randomize(:sign)
+        args.state.ball.dy = 5.randomize(:sign)
+        args.state.ball.debounce = 3 * 60
+      end
+end
+
+def input(args)
+  input_left_paddle args
+  input_right_paddle args
+end
+
+begin :input_methods
+      def input_left_paddle(args)
+        if args.inputs.controller_one.key_held.down  || args.inputs.keyboard.key_held.s
+          args.state.left_paddle.y -= 10
+        elsif args.inputs.controller_one.key_down.up || args.inputs.keyboard.key_held.w
+          args.state.left_paddle.y += 10
+        end
+      end
+
+      def input_right_paddle(args)
+        if args.inputs.controller_two.key_down.down  || args.inputs.keyboard.key_held.l
+          args.state.right_paddle.y -= 10
+        elsif args.inputs.controller_two.key_down.up || args.inputs.keyboard.key_held.o
+          args.state.right_paddle.y += 10
+        end
+      end
+end
+
+begin :assets
+      def solid_ball(args)
+        centered_rect args.state.ball.x, args.state.ball.y, args.state.ball.size, args.state.ball.size
+      end
+
+      def solid_left_paddle(args)
+        centered_rect_vertically 0, args.state.left_paddle.y, args.state.paddle.w, args.state.paddle.h
+      end
+
+      def solid_right_paddle(args)
+        centered_rect_vertically 1280 - args.state.paddle.w, args.state.right_paddle.y, args.state.paddle.w,
+                                 args.state.paddle.h
+      end
+
+      def centered_rect(x, y, w, h)
+        [x - w / 2, y - h / 2, w, h]
+      end
+
+      def centered_rect_vertically(x, y, w, h)
+        [x, y - h / 2, w, h]
+      end
+end
