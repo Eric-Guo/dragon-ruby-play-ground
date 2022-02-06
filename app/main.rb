@@ -1,440 +1,622 @@
-# A sample boss battle by @Akzidenz
+# frozen_string_literal: true
 
-$gtk.reset
+class Game
+  attr_gtk
 
-def tick args
-  defaults args
-  player_inputs args
-  calc args
-  render args
-  game_inputs args
-end
-
-######################
-# SETUP DEFAULT VALUES
-######################
-
-def defaults args
-  game_defaults args
-  player_defaults args
-  enemy_defaults args
-end
-
-def game_defaults args
-  args.state.game_state ||= :playing # will be :win or :lose later on
-end
-
-def player_defaults args
-  args.state.player.speed ||= 14
-  args.state.player.dir ||= [0, 0]
-  args.state.player.animation_frame ||= 0
-  args.state.player.w ||= 180
-  args.state.player.h ||= 182
-  args.state.player.x ||= (args.grid.w - args.state.player.w) / 2
-  args.state.player.y ||= (args.grid.h - args.state.player.h) / 2
-  args.state.player.path ||= 'sprites/ladybird-0.png'
-  args.state.player.angle ||= 0
-end
-
-def enemy_defaults args
-  args.state.enemy.num_segments ||= 10
-  args.state.enemy.x ||= -999 # hidden off-screen at start
-  args.state.enemy.y ||= -999
-  args.state.enemy.w ||= 121
-  args.state.enemy.h ||= 118
-  args.state.enemy.angle ||= 0
-  args.state.enemy.speed ||= 12
-  args.state.enemy.mode ||= :get_started
-  args.state.enemy.dir ||= 0
-  args.state.enemy.action_timer ||= 0
-end
-
-###################
-# HANDLE USER INPUT
-###################
-
-def player_inputs args
-  args.state.player.dir = [args.inputs.left_right, args.inputs.up_down]
-end
-
-def game_inputs args
-  $gtk.reset seed: Time.now.to_f * 1000 if args.inputs.keyboard.key_down.backspace
-end
-
-############################
-# CALCULATE STUFF EVERY TICK
-############################
-
-def calc args
-  # stop calculating if the game is not playing
-  return unless args.state.game_state == :playing
-
-  calc_player args
-  calc_enemy args
-  check_collisions args
-end
-
-def calc_player args
-  # update player based on movement direction
-  case args.state.player.dir
-  when [0, 0] # no movement
-    args.state.player.animation_frame = 0 # reset legs
-  when [0, 1] # up
-    args.state.player.angle = 0
-  when [1, 1] # right and up
-    args.state.player.angle = 315
-  when [1, 0] # right
-    args.state.player.angle = 270
-  when [1, -1] # right and down
-    args.state.player.angle = 225
-  when [0, -1] # down
-    args.state.player.angle = 180
-  when [-1, -1] # left and down
-    args.state.player.angle = 135
-  when [-1, 0] # left
-    args.state.player.angle = 90
-  when [-1, 1] # left and up
-    args.state.player.angle = 45
+  def tick
+    defaults
+    input
+    calc
+    render
   end
 
-  # update player location
-  args.state.player.x += args.state.player.dir.x * args.state.player.speed
-  args.state.player.y += args.state.player.dir.y * args.state.player.speed
-
-  # prevent player moving offscreen
-  args.state.player.x = args.state.player.x.clamp(0, 1280 - args.state.player.w)
-  args.state.player.y = args.state.player.y.clamp(0, 720 - args.state.player.h)
-
-  # animate player legs
-  args.state.player.animation_frame += 0.2 # update every 5 ticks of movement
-  # loop back to frame 1 if we are out of frames
-  args.state.player.animation_frame = 1 if args.state.player.animation_frame >= 4
-
-  # player sprite changes
-  args.state.player.path = "sprites/ladybird-#{args.state.player.animation_frame.to_i}.png"
-end
-
-def calc_enemy args
-  # determine enemy behaviour
-  case args.state.enemy.mode
-  when :get_started
-    enemy_get_started args
-  when :pause_1
-    enemy_pause_1 args
-  when :move_1
-    enemy_move_1 args
-  when :pause_2
-    enemy_pause_2 args
-  when :move_2
-    enemy_move_2 args
+  def defaults
+    new_game if !state.clock || state.game_over == true
   end
 
-  # build the enemy segment sprites now
-  args.state.enemy.sprites = calc_enemy_sprites args
-end
+  def input
+    input_entity player,
+                 find_input_timeline(at: player.clock, key: :left_right),
+                 find_input_timeline(at: player.clock, key: :space),
+                 find_input_timeline(at: player.clock, key: :down)
 
-def calc_enemy_sprites args
-  # put enemy segment sprites in an array
-  enemy_segments = []
-
-  # loop for the current number of enemy segments
-  args.state.enemy.num_segments.times do |seg_num|
-    # do some calculations for position
-    seg_x = args.state.enemy.x
-    seg_y = args.state.enemy.y
-    seg_y -= (args.state.enemy.h - 8) * seg_num if args.state.enemy.dir == 1
-    seg_x -= (args.state.enemy.w - 10) * seg_num if args.state.enemy.dir == 2
-    seg_y += (args.state.enemy.h - 8) * seg_num if args.state.enemy.dir == 3
-    seg_x += (args.state.enemy.w - 10) * seg_num if args.state.enemy.dir == 4
-    seg_color = 'green'
-    seg_color = 'orange' if seg_num == args.state.enemy.num_segments - 1
-
-    # add the segment background color sprite to the array
-    enemy_segments << {
-      x: seg_x,
-      y: seg_y,
-      w: args.state.enemy.w,
-      h: args.state.enemy.h,
-      path: "sprites/segment-#{seg_color}.png"
-    }
-
-    # add the segment line art sprite to the array
-    enemy_segments << {
-      x: seg_x,
-      y: seg_y,
-      w: args.state.enemy.w,
-      h: args.state.enemy.h,
-      angle: args.state.enemy.angle,
-      path: 'sprites/segment.png'
-    }
-  end
-
-  # return the array
-  enemy_segments
-end
-
-def check_collisions args
-  # create a hit box for the player
-  # a little smaller than the sprite rect
-  player_hit_rect = [
-    args.state.player.x + 40,
-    args.state.player.y + 40,
-    args.state.player.w - 80,
-    args.state.player.h - 80
-  ]
-
-  # loop through the enemy segments (skip the last two sprites)
-  args.state.enemy.sprites[0..-3].each do |es|
-    segment_hit_rect = [
-      es.x + 15,
-      es.y + 15,
-      es.w - 30,
-      es.h - 30
-    ]
-
-    # did player hit a green segment?
-    if segment_hit_rect.intersect_rect? player_hit_rect
-      args.state.game_state = :lose
+    shadows.find_all { |shadow| entity_active? shadow }
+           .each do |shadow|
+      input_entity shadow,
+                   find_input_timeline(at: shadow.clock, key: :left_right),
+                   find_input_timeline(at: shadow.clock, key: :space),
+                   find_input_timeline(at: shadow.clock, key: :down)
     end
   end
-  
-  # create hit box for the orange segment
-  last_segment = args.state.enemy.sprites[-1]
-  last_segment_hit_rect = [
-    last_segment.x + 5,
-    last_segment.y + 5,
-    last_segment.w - 10,
-    last_segment.h - 10
-  ]
 
-  # did the player hit the orange segment?
-  if last_segment_hit_rect.intersect_rect? player_hit_rect
-    # knock out the last segment
-    args.state.enemy.num_segments -= 1
+  def input_entity(entity, left_right, jump, fall_through)
+    return unless entity_active? entity
+
+    entity.dx += left_right
+
+    if left_right.zero?
+      entity_set_action! entity, :standing if entity.action == :running
+    elsif entity.left_right != left_right && (entity_on_platform? entity)
+      entity_set_action! entity, :running
+    end
+
+    entity.left_right = left_right
+
+    entity.orientation = case left_right
+                         when -1
+                           :left
+                         when 1
+                           :right
+                         else
+                           entity.orientation
+                         end
+
+    if fall_through && (entity_on_platform? entity)
+      entity.jumped_at      = 0
+      entity.jumped_down_at = entity.clock
+      entity.jump_count    += 1
+    end
+
+    if jump && entity.jump_count < 3
+      case entity.jump_count
+      when 0
+        entity_set_action! entity, :first_jump
+      when 1
+        entity_set_action! entity, :midair_jump
+      when 2
+        entity_set_action! entity, :midair_jump
+      end
+
+      entity.dy             = entity.jump_power
+      entity.jumped_at      = entity.clock
+      entity.jumped_down_at = 0
+      entity.jump_count    += 1
+    end
   end
 
-  # if the enemy is dead (player won!)
-  if args.state.enemy.num_segments.zero?
-    args.state.game_state = :win
+  def calc
+    calc_light_meter
+    calc_action_history
+    calc_entity player
+    calc_shadows
+    calc_light_crystal
+    calc_render_queues
+    calc_game_over
+    calc_clock
+  end
+
+  def calc_light_meter
+    state.light_meter -= 1
+    d = state.light_meter_queue * 0.1
+    state.light_meter += d
+    state.light_meter_queue -= d
+  end
+
+  def calc_action_history
+    state.curr_left_right     = inputs.left_right
+    if state.prev_left_right != state.curr_left_right
+      state.input_timeline.unshift({ at: state.clock, k: :left_right, v: state.curr_left_right })
+    end
+    state.prev_left_right = state.curr_left_right
+
+    state.curr_space     = inputs.keyboard.key_down.space    ||
+                           inputs.controller_one.key_down.a  ||
+                           inputs.keyboard.key_down.up       ||
+                           inputs.controller_one.key_down.up ||
+                           inputs.controller_one.key_down.b
+
+    if state.prev_space != state.curr_space
+      state.input_timeline.unshift({ at: state.clock, k: :space, v: state.curr_space })
+    end
+    state.prev_space = state.curr_space
+
+    state.curr_down     = inputs.keyboard.down || inputs.controller_one.down
+    if state.prev_down != state.curr_down
+      state.input_timeline.unshift({ at: state.clock, k: :down, v: state.curr_down })
+    end
+    state.prev_down = state.curr_down
+  end
+
+  def calc_entity(entity)
+    calc_entity_rect entity
+    return unless entity_active? entity
+
+    calc_entity_collision entity
+    calc_entity_action entity
+    calc_entity_movement entity
+  end
+
+  def calc_entity_rect(entity)
+    entity.render_rect = { x: entity.x, y: entity.y, w: entity.w, h: entity.h }
+    entity.rect = entity.render_rect.merge x: entity.render_rect.x + entity.render_rect.w * 0.33,
+                                           w: entity.render_rect.w * 0.33
+    entity.next_rect = entity.rect.merge x: entity.x + entity.dx,
+                                         y: entity.y + entity.dy
+    entity.prev_rect = entity.rect.merge x: entity.x - entity.dx,
+                                         y: entity.y - entity.dy
+    orientation_shift = 0
+    orientation_shift = entity.rect.w.half if entity.orientation == :right
+    entity.hurt_rect = entity.rect.merge y: entity.rect.y + entity.h * 0.33,
+                                         x: entity.rect.x - entity.rect.w.half + orientation_shift,
+                                         h: entity.rect.h * 0.33
+  end
+
+  def calc_entity_collision(entity)
+    calc_entity_below entity
+    calc_entity_left entity
+    calc_entity_right entity
+  end
+
+  def calc_entity_below(entity)
+    return unless entity.dy.negative?
+
+    tiles_below = find_tiles { |t| t.rect.top <= entity.prev_rect.y }
+    collision = find_collision tiles_below, (entity.rect.merge y: entity.next_rect.y)
+    return unless collision
+
+    can_drop = true
+    can_drop = false if entity.last_standing_at && (entity.clock - entity.last_standing_at) < 8
+
+    if can_drop && entity.jumped_down_at.elapsed_time(entity.clock) < 10 && !collision.impassable
+      entity.dy = -1 if (entity_on_platform? entity) && can_drop
+
+      entity.jump_count = 1
+    else
+      entity.y  = collision.rect.y + collision.rect.h
+      entity.dy = 0
+      entity.jump_count = 0
+    end
+  end
+
+  def calc_entity_left(entity)
+    return unless entity.dx.negative?
+    return if entity.next_rect.x > 8 - 32
+
+    entity.x  = 8 - 32
+    entity.dx = 0
+  end
+
+  def calc_entity_right(entity)
+    return unless entity.dx.positive?
+    return if (entity.next_rect.x + entity.rect.w) < (1280 - 8 - 32)
+
+    entity.x  = (1280 - 8 - entity.rect.w - 32)
+    entity.dx = 0
+  end
+
+  def calc_entity_action(entity)
+    if entity.dy.negative?
+      if entity.action == :midair_jump
+        entity_set_action! entity, :falling if entity_action_complete? entity, state.midair_jump_duration
+      else
+        entity_set_action! entity, :falling
+      end
+    elsif entity.dy.zero? && !(entity_on_platform? entity)
+      if entity.left_right.zero?
+        entity_set_action! entity, :standing
+      else
+        entity_set_action! entity, :running
+      end
+    end
+  end
+
+  def calc_entity_movement(entity)
+    calc_entity_dy entity
+    calc_entity_dx entity
+  end
+
+  def calc_entity_dx(entity)
+    entity.dx  = entity.dx.clamp(-5, 5)
+    entity.dx *= 0.9
+    entity.x  += entity.dx
+  end
+
+  def calc_entity_dy(entity)
+    entity.y  += entity.dy
+    entity.dy += state.gravity
+    entity.dy += entity.dy * state.drag**2 * -1
+  end
+
+  def calc_shadows
+    add_shadow! if state.clock.zmod?(300)
+
+    shadows.each do |shadow|
+      calc_entity shadow
+      shadow.spawn_countdown -= 1 if shadow.spawn_countdown.positive?
+    end
+  end
+
+  def calc_light_crystal
+    light_rect = state.light_crystal
+    if player.hurt_rect.intersect_rect? light_rect
+      state.jitter_fade_out_render_queue << { x: state.light_crystal.x,
+                                              y: state.light_crystal.y,
+                                              w: state.light_crystal.w,
+                                              h: state.light_crystal.h,
+                                              a: 255,
+                                              path: 'sprites/light.png' }
+      outputs.sounds << "sounds/light-#{rand(6)}.wav"
+      state.light_meter_queue += 600
+      state.light_crystal = new_light_crystal
+    end
+  end
+
+  def calc_render_queues
+    state.jitter_fade_out_render_queue.each do |s|
+      new_w = s.w * 1.02**5
+      ds = new_w - s.w
+      s.w = new_w
+      s.h = new_w
+      s.x -= ds.half
+      s.y -= ds.half
+      s.a = s.a * 0.97**5
+    end
+
+    state.jitter_fade_out_render_queue.reject! { |s| s.a <= 1 }
+
+    state.game_over_render_queue.each { |s| s.a = s.a * 0.95 }
+    state.game_over_render_queue.reject! { |s| s.a <= 1 }
+  end
+
+  def calc_game_over
+    state.game_over = false
+    state.game_over ||= shadows.find_all { |s| s.spawn_countdown <= 0 }
+                               .any? { |s| s.hurt_rect.intersect_rect? player.hurt_rect }
+
+    state.game_over ||= state.light_meter <= 1
+
+    if inputs.keyboard.key_down.r
+      state.you_win = false
+      state.game_over = true
+    end
+
+    if state.game_over
+      state.you_win = false
+      state.game_over = true
+    end
+
+    if state.light_meter >= 6000
+      state.you_win = true
+      state.game_over = true
+    end
+
+    if state.game_over
+      state.game_over_render_queue.concat shadows.map { |s| s.sprite.merge(a: 255) }
+      state.game_over_render_queue << player.sprite.merge(a: 255)
+      state.game_over_render_queue << state.light_crystal.merge(a: 255, path: 'sprites/light.png', b: 128)
+    end
+  end
+
+  def calc_clock
+    return if state.game_over
+
+    state.clock += 1
+    player.clock += 1
+    shadows.each { |s| s.clock += 1 if entity_active? s }
+  end
+
+  def render
+    render_stage
+    render_light_meter
+    render_instructions
+    render_render_queues
+    render_light_meter_warning
+    render_light_crystal
+    render_entities
+  end
+
+  def render_stage
+    outputs.background_color = [255, 255, 255]
+    outputs.sprites << { x: 0,
+                         y: 0,
+                         w: 1280,
+                         h: 720,
+                         path: 'sprites/stage.png',
+                         a: 200 }
+  end
+
+  def render_light_meter
+    meter_perc = state.light_meter.fdiv(6000) + (0.002 * rand)
+    light_w = (1280 * meter_perc).round
+    dark_w  = 1280 - light_w
+    outputs.sprites << { x: 0,
+                         y: 64.from_top,
+                         w: light_w,
+                         source_x: 0,
+                         source_y: 0,
+                         source_w: light_w,
+                         source_h: 128,
+                         h: 64,
+                         path: 'sprites/meter-light.png' }
+
+    outputs.sprites << { x: 1280 * meter_perc,
+                         y: 64.from_top,
+                         w: dark_w,
+                         source_x: light_w,
+                         source_y: 0,
+                         source_w: dark_w,
+                         source_h: 128,
+                         h: 64,
+                         path: 'sprites/meter-dark.png' }
+  end
+
+  def render_instructions
+    outputs.labels << { x: 640,
+                        y: 40,
+                        text: '[left/right] to move, [up/space] to jump, [down] to drop through platform',
+                        alignment_enum: 1 }
+
+    if state.you_win
+      outputs.labels << { x: 640,
+                          y: 40.from_top,
+                          text: 'You win!',
+                          size_enum: -1,
+                          alignment_enum: 1 }
+    end
+  end
+
+  def render_render_queues
+    outputs.sprites << state.jitter_fade_out_render_queue
+    outputs.sprites << state.game_over_render_queue
+  end
+
+  def render_light_meter_warning
+    return if state.light_meter >= 255
+
+    outputs.primitives << { x: 0,
+                            y: 0,
+                            w: 1280,
+                            h: 720,
+                            a: 255 - state.light_meter,
+                            path: :pixel,
+                            r: 0,
+                            g: 0,
+                            b: 0 }
+
+    outputs.primitives << { x: state.light_crystal.x - 32,
+                            y: state.light_crystal.y - 32,
+                            w: 128,
+                            h: 128,
+                            a: 255 - state.light_meter,
+                            path: 'sprites/spotlight.png' }
+  end
+
+  def render_light_crystal
+    jitter_sprite = { x: state.light_crystal.x + 5 * rand,
+                      y: state.light_crystal.y + 5 * rand,
+                      w: state.light_crystal.w + 5 * rand,
+                      h: state.light_crystal.h + 5 * rand,
+                      path: 'sprites/light.png' }
+    outputs.primitives << jitter_sprite
+  end
+
+  def render_entities
+    render_entity player, r: 0, g: 0, b: 0
+    shadows.each { |shadow| render_entity shadow, g: 0, b: 0 }
+  end
+
+  def render_entity(entity, r: 255, g: 255, b: 255)
+    a = 255
+
+    entity.sprite = nil
+
+    if entity.activate_at
+      activation_elapsed_time = state.clock - entity.activate_at
+      if entity.activate_at > state.clock
+        entity.sprite = { x: entity.initial_x + 5 * rand,
+                          y: entity.initial_y + 5 * rand,
+                          w: 64 + 5 * rand,
+                          h: 64 + 5 * rand,
+                          path: 'sprites/light.png',
+                          g: 0, b: 0,
+                          a: a }
+
+        outputs.sprites << entity.sprite
+        return
+      elsif !entity.activated
+        entity.activated = true
+        state.jitter_fade_out_render_queue << { x: entity.initial_x + 5 * rand,
+                                                y: entity.initial_y + 5 * rand,
+                                                w: 86 + 5 * rand, h: 86 + 5 * rand,
+                                                path: 'sprites/light.png',
+                                                g: 0, b: 0, a: 255 }
+      end
+    end
+
+    case entity.action
+    when :standing
+      path = 'sprites/player/stand.png'
+    when :running
+      sprint_index = entity.action_at
+                           .frame_index count: 4,
+                                        hold_for: 8,
+                                        repeat: true,
+                                        tick_count_override: entity.clock
+      path = "sprites/player/run-#{sprint_index}.png"
+    when :first_jump
+      sprint_index = entity.action_at
+                           .frame_index count: 2,
+                                        hold_for: 8,
+                                        repeat: false,
+                                        tick_count_override: entity.clock
+      path = "sprites/player/jump-#{sprint_index || 1}.png"
+    when :midair_jump
+      sprint_index = entity.action_at
+                           .frame_index count: state.midair_jump_frame_count,
+                                        hold_for: state.midair_jump_hold_for,
+                                        repeat: false,
+                                        tick_count_override: entity.clock
+      path = "sprites/player/midair-jump-#{sprint_index || 8}.png"
+    when :falling
+      path = 'sprites/player/falling.png'
+    end
+
+    flip_horizontally = true if entity.orientation == :left
+    entity.sprite = entity.render_rect.merge path: path,
+                                             a: a,
+                                             r: r,
+                                             g: g,
+                                             b: b,
+                                             flip_horizontally: flip_horizontally
+    outputs.sprites << entity.sprite
+  end
+
+  def new_game
+    state.clock                   = 0
+    state.game_over               = false
+    state.gravity                 = -0.4
+    state.drag                    = 0.15
+
+    state.activation_time         = 90
+    state.light_meter             = 600
+    state.light_meter_queue       = 0
+
+    state.midair_jump_frame_count = 9
+    state.midair_jump_hold_for    = 6
+    state.midair_jump_duration    = state.midair_jump_frame_count * state.midair_jump_hold_for
+
+    state.tiles                   = [
+      { impassable: true, x: 0, y: 0, w: 1280, h: 8, path: :pixel, r: 0, g: 0, b: 0 },
+      { impassable: true, x: 0, y: 0, w: 8, h: 1500, path: :pixel, r: 0, g: 0, b: 0 },
+      { impassable: true, x: 1280 - 8, y: 0, w: 8, h: 1500, path: :pixel, r: 0, g: 0, b: 0 },
+
+      { x: 80 + 320 + 80,            y: 128, w: 320, h: 8, path: :pixel, r: 0, g: 0, b: 0 },
+      { x: 80 + 320 + 80 + 320 + 80, y: 192, w: 320, h: 8, path: :pixel, r: 0, g: 0, b: 0 },
+
+      { x: 160,                      y: 320, w: 400, h: 8, path: :pixel, r: 0, g: 0, b: 0 },
+      { x: 160 + 400 + 160,          y: 400, w: 400, h: 8, path: :pixel, r: 0, g: 0, b: 0 },
+
+      { x: 320,                      y: 600, w: 320, h: 8, path: :pixel, r: 0, g: 0, b: 0 },
+
+      { x: 8, y: 500, w: 100, h: 8, path: :pixel, r: 0, g: 0, b: 0 },
+
+      { x: 8, y: 60, w: 100, h: 8, path: :pixel, r: 0, g: 0, b: 0 }
+    ]
+
+    state.player                = new_entity
+    state.player.jump_count     = 1
+    state.player.jumped_at      = state.player.clock
+    state.player.jumped_down_at = 0
+
+    state.shadows = []
+
+    state.input_timeline = [
+      { at: 0, k: :left_right, v: inputs.left_right },
+      { at: 0, k: :space,      v: false },
+      { at: 0, k: :down,       v: false }
+    ]
+
+    state.jitter_fade_out_render_queue   = []
+    state.game_over_render_queue       ||= []
+
+    state.light_crystal = new_light_crystal
+  end
+
+  def new_light_crystal
+    r = { x: 124 + rand(1000), y: 135 + rand(500), w: 64, h: 64 }
+    return new_light_crystal if tiles.any? { |t| t.intersect_rect? r }
+    return new_light_crystal if (player.x - r.x).abs < 200
+    r
+  end
+
+  def entity_active?(entity)
+    return true unless entity.activate_at
+
+    entity.activate_at <= state.clock
+  end
+
+  def add_shadow!
+    s = new_entity(from_entity: player)
+    s.activate_at = state.clock + state.activation_time * (shadows.length + 1)
+    s.spawn_countdown = state.activation_time
+    shadows << s
+  end
+
+  def find_input_timeline(at:, key:)
+    state.input_timeline.find { |t| t.at <= at && t.k == key }.v
+  end
+
+  def new_entity(from_entity: nil)
+    pe = state.new_entity(:body)
+    pe.w                  = 96
+    pe.h                  = 96
+    pe.jump_power         = 12
+    pe.y                  = 500
+    pe.x                  = 640 - 8
+    pe.initial_x          = pe.x
+    pe.initial_y          = pe.y
+    pe.dy                 = 0
+    pe.dx                 = 0
+    pe.jumped_down_at     = 0
+    pe.jumped_at          = 0
+    pe.jump_count         = 0
+    pe.clock              = state.clock
+    pe.orientation        = :right
+    pe.action             = :falling
+    pe.action_at          = state.clock
+    pe.left_right         = 0
+    if from_entity
+      pe.w              = from_entity.w
+      pe.h              = from_entity.h
+      pe.jump_power     = from_entity.jump_power
+      pe.x              = from_entity.x
+      pe.y              = from_entity.y
+      pe.initial_x      = from_entity.x
+      pe.initial_y      = from_entity.y
+      pe.dy             = from_entity.dy
+      pe.dx             = from_entity.dx
+      pe.jumped_down_at = from_entity.jumped_down_at
+      pe.jumped_at      = from_entity.jumped_at
+      pe.orientation    = from_entity.orientation
+      pe.action         = from_entity.action
+      pe.action_at      = from_entity.action_at
+      pe.jump_count     = from_entity.jump_count
+      pe.left_right     = from_entity.left_right
+    end
+    pe
+  end
+
+  def entity_on_platform?(entity)
+    entity.action == :standing || entity.action == :running
+  end
+
+  def entity_action_complete?(entity, action_duration)
+    entity.action_at.elapsed_time(entity.clock) + 1 >= action_duration
+  end
+
+  def entity_set_action!(entity, action)
+    entity.action = action
+    entity.action_at = entity.clock
+    entity.last_standing_at = entity.clock if action == :standing
+  end
+
+  def player
+    state.player
+  end
+
+  def shadows
+    state.shadows
+  end
+
+  def tiles
+    state.tiles
+  end
+
+  def find_tiles(&block)
+    tiles.find_all(&block)
+  end
+
+  def find_collision(tiles, target)
+    tiles.find { |t| t.rect.intersect_rect? target }
   end
 end
 
-########
-# RENDER
-########
-
-def render args
-  render_background args
-  render_enemy args
-  render_player args
-  render_instructions args
-  render_jumbotron args
+def boot(args)
+  $game = Game.new
+  args.outputs.sounds << 'sounds/hymn.ogg'
 end
 
-def render_background args
-  args.outputs.sprites << {
-    x: 0,
-    y: 0,
-    w: 1280,
-    h: 720,
-    path: 'sprites/green-background.png',
-    a: 140
-  }
-end
-
-def render_enemy args
-  args.outputs.sprites << args.state.enemy.sprites
-end
-
-def render_player args
-  args.outputs.sprites << {
-    x: args.state.player.x,
-    y: args.state.player.y,
-    w: args.state.player.w,
-    h: args.state.player.h,
-    angle: 0,
-    path: 'sprites/ladybird-background.png'
-  }
-
-  args.outputs.sprites << {
-    x: args.state.player.x,
-    y: args.state.player.y,
-    w: args.state.player.w,
-    h: args.state.player.h,
-    angle: args.state.player.angle,
-    path: args.state.player.path
-  }
-end
-
-# show instructions at the top of the screen
-def render_instructions args
-  texts = ["Use arrow keys or WASD to move. Backspace to restart.",
-  "If you touch the CATERKILLAR, you will die. But what is up with the orange bit?"]
-
-  args.outputs.labels << texts.map.with_index do |txt, i|
-    {
-      x: 10,
-      y: 710 - i * 22,
-      text: txt,
-      r: 60,
-      g: 120,
-      b: 60
-    }
-  end
-end
-
-# show this when the game is lost or won
-def render_jumbotron args
-  # back out if the game is still playing
-  return if args.state.game_state == :playing
-
-  # throw a transparent shape over the scene
-  args.outputs.sprites << {
-    x: 0,
-    y: 0,
-    w: 1280,
-    h: 720,
-    a: 100,
-    r: 255,
-    g: 0,
-    b: 0
-  }.solid!
-
-  # display win/lose text
-  case args.state.game_state
-  when :lose
-    jumbo_text = "Killed by the CATERKILLAR! :("
-  when :win
-    jumbo_text = "You beat the CATERKILLAR! :)"
-  end
-
-  args.outputs.labels << {
-    x: 640,
-    y: 360,
-    text: jumbo_text,
-    alignment_enum: 1,
-    vertical_alignment_enum: 1,
-    size_enum: 20,
-    r: 255,
-    g: 255,
-    b: 255
-  }
-end
-
-##################
-# ENEMY MOVEMEMENT
-##################
-# The following methods tell the enemy how to behave during
-# each of the modes it goes through
-
-# The game just started
-# Setup the enemy and then pause
-def enemy_get_started args
-  # choose an initial direction, set the sprite angle and
-  # set the initial location offscreen
-  args.state.enemy.dir = 1 + rand(4) # 1: up, 2: right, 3: down, 4: left
-  case args.state.enemy.dir
-  when 1 # up
-    args.state.enemy.x = rand(1280 - args.state.enemy.w)
-    args.state.enemy.y = -args.state.enemy.h
-    args.state.enemy.angle = 0
-  when 2 # right
-    args.state.enemy.x = -args.state.enemy.w
-    args.state.enemy.y = rand(720 - args.state.enemy.h)
-    args.state.enemy.angle = 270
-  when 3 # down
-    args.state.enemy.x = rand(1280 - args.state.enemy.w)
-    args.state.enemy.y = 720
-    args.state.enemy.angle = 180
-  when 4 # left
-    args.state.enemy.x = 1280
-    args.state.enemy.y = rand(720 - args.state.enemy.h)
-    args.state.enemy.angle = 90
-  end
-
-  # set the timer to the duration of the next pause
-  args.state.enemy.action_timer = 60 # 1 second
-  # set the next mode
-  args.state.enemy.mode = :pause_1
-end
-
-# enemy waits before first appearing
-def enemy_pause_1 args
-  args.state.enemy.action_timer -= 1
-  if args.state.enemy.action_timer.zero?
-    args.state.enemy.mode = :move_1
-  end 
-end
-
-# enemy rolls forwards enough to put head on screen
-# and then pauses
-def enemy_move_1 args
-  case args.state.enemy.dir
-  when 1
-    args.state.enemy.y += args.state.enemy.speed
-    move_complete = true if args.state.enemy.y > 0
-  when 2
-    args.state.enemy.x += args.state.enemy.speed
-    move_complete = true if args.state.enemy.x > 0
-  when 3
-    args.state.enemy.y -= args.state.enemy.speed
-    move_complete = true if args.state.enemy.y < 720 - args.state.enemy.h
-  when 4
-    args.state.enemy.x -= args.state.enemy.speed
-    move_complete = true if args.state.enemy.x < 1280 - args.state.enemy.w
-  end
-
-  # stop moving if the head is fully on the screen
-  if move_complete
-    args.state.enemy.action_timer = 60
-    args.state.enemy.mode = :pause_2
-  end
-end
-
-# wait after enemy head appears on screen
-def enemy_pause_2 args
-  args.state.enemy.action_timer -= 1
-  if args.state.enemy.action_timer.zero?
-    args.state.enemy.mode = :move_2
-  end
-end
-
-# move on
-def enemy_move_2 args
-  case args.state.enemy.dir
-  when 1
-    args.state.enemy.y += args.state.enemy.speed
-  when 2
-    args.state.enemy.x += args.state.enemy.speed
-  when 3
-    args.state.enemy.y -= args.state.enemy.speed
-  when 4
-    args.state.enemy.x -= args.state.enemy.speed
-  end
-
-  # enemy movement is finished when it goes completely off-screen
-  unless args.grid.rect.intersect_rect? combine_rects args.state.enemy.sprites
-    # restart enemy behaviour
-    args.state.enemy.mode = :get_started
-  end
-end
-
-#########
-# HELPERS
-#########
-
-def combine_rects array_of_rects
-  # re-orient the data from an array of rects to a rect of arrays
-  lefts = []
-  rights = []
-  tops = []
-  bottoms = []
-  array_of_rects.each do |rect|
-    lefts << rect.x
-    rights << rect.x + rect.w
-    tops << rect.y + rect.h
-    bottoms << rect.y
-  end
-
-  [lefts.min, bottoms.min, rights.max - lefts.min, tops.max - bottoms.min]
+def tick(args)
+  $game.args = args
+  $game.tick
 end
