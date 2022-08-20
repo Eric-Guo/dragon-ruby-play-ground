@@ -1,164 +1,86 @@
 # frozen_string_literal: true
 
+BOARD_W = 50
+BOARD_H = 50
+
+def box_color(num)
+  [
+    [0, 0, 0, 255],
+    [200, 0, 0, 255],
+    [0, 200, 0, 255],
+    [0, 0, 200, 255],
+    [0, 100, 100, 255],
+    [100, 0, 200, 255],
+    [0, 60, 70, 250],
+    [10, 50, 40, 255],
+    [60, 0, 50, 255]
+  ][num]
+end
+
 def tick(args)
-  defaults args
-  render args
-  calc args
-  input args
+  ticks = args.state.tick_count
+
+  board_x = 50
+  board_y = 60
+
+  draw_box(args, board_x, board_y, 0, ticks)
+  draw_box(args, board_x, board_y, 1, ticks)
+  draw_box(args, board_x, board_y, 2, ticks)
+  draw_box(args, board_x, board_y, 3, ticks)
+  draw_box(args, board_x, board_y, 4, ticks)
+  draw_box(args, board_x, board_y, 5, ticks)
+  draw_box(args, board_x, board_y, 6, ticks)
+  draw_box(args, board_x, board_y, 7, ticks)
+  draw_box(args, board_x, board_y, 8, ticks)
 end
 
-def defaults(args)
-  args.state.ball.debounce       ||= 3 * 60
-  args.state.ball.size           ||= 10
-  args.state.ball.size_half      ||= args.state.ball.size / 2
-  args.state.ball.x              ||= 640
-  args.state.ball.y              ||= 360
-  args.state.ball.dx             ||= 5.randomize(:sign)
-  args.state.ball.dy             ||= 5.randomize(:sign)
-  args.state.left_paddle.y       ||= 360
-  args.state.right_paddle.y      ||= 360
-  args.state.paddle.h            ||= 120
-  args.state.paddle.w            ||= 10
-  args.state.left_paddle.score   ||= 0
-  args.state.right_paddle.score  ||= 0
+def lerp(start, stop, step)
+  (1.0 - step) * start + step * stop
 end
 
-def render(args)
-  render_center_line args
-  render_scores args
-  render_countdown args
-  render_ball args
-  render_paddles args
-  render_instructions args
+def draw_box(args, board_x, board_y, box_num, ticks)
+  box_color = box_color(box_num)
+
+  leap_ticks = lerp(0, 280,
+                    (Math.sin(2 * ticks / 200) + 1) / 2)
+
+  case box_num
+  when 0
+    x = board_x
+    y = board_y
+  when 1
+    x = board_x + leap_ticks * 4
+    y = board_y + leap_ticks
+  when 2
+    x = board_x + leap_ticks * 2
+    y = board_y + leap_ticks
+  when 3
+    x = board_x
+    y = board_y + leap_ticks
+  when 4
+    x = board_x + leap_ticks * 2
+    y = board_y
+  when 5
+    x = board_x + leap_ticks * 4
+    y = board_y
+  when 6
+    x = board_x + leap_ticks * 2
+    y = board_y + leap_ticks * 2
+  when 7
+    x = board_x
+    y = board_y + leap_ticks * 2
+  when 8
+    x = board_x + leap_ticks * 4
+    y = board_y + leap_ticks * 2
+  end
+
+  args.outputs.borders << [x, y,
+                           BOARD_W, BOARD_H] + box_color
+
+  draw_solid(args, x, y, box_color)
 end
 
-begin :render_methods
-      def render_center_line(args)
-        args.outputs.lines  << [640, 0, 640, 720]
-      end
-
-      def render_scores(args)
-        args.outputs.labels << [
-          [320, 650, args.state.left_paddle.score, 10, 1],
-          [960, 650, args.state.right_paddle.score, 10, 1]
-        ]
-      end
-
-      def render_countdown(args)
-        return unless args.state.ball.debounce.positive?
-
-        args.outputs.labels << [640, 360, '%.2f' % args.state.ball.debounce.fdiv(60), 10, 1]
-      end
-
-      def render_ball(args)
-        args.outputs.solids << solid_ball(args)
-      end
-
-      def render_paddles(args)
-        args.outputs.solids << solid_left_paddle(args)
-        args.outputs.solids << solid_right_paddle(args)
-      end
-
-      def render_instructions(args)
-        args.outputs.labels << [320, 30, 'W and S keys to move left paddle.',  0, 1]
-        args.outputs.labels << [920, 30, 'O and L keys to move right paddle.', 0, 1]
-      end
-end
-
-def calc(args)
-  args.state.ball.debounce -= 1 and return if args.state.ball.debounce.positive?
-
-  calc_move_ball args
-  calc_collision_with_left_paddle args
-  calc_collision_with_right_paddle args
-  calc_collision_with_walls args
-end
-
-begin :calc_methods
-      def calc_move_ball(args)
-        args.state.ball.x += args.state.ball.dx
-        args.state.ball.y += args.state.ball.dy
-      end
-
-      def calc_collision_with_left_paddle(args)
-        if solid_left_paddle(args).intersect_rect? solid_ball(args)
-          args.state.ball.dx *= -1
-        elsif args.state.ball.x.negative?
-          args.state.right_paddle.score += 1
-          calc_reset_round args
-        end
-      end
-
-      def calc_collision_with_right_paddle(args)
-        if solid_right_paddle(args).intersect_rect? solid_ball(args)
-          args.state.ball.dx *= -1
-        elsif args.state.ball.x > 1280
-          args.state.left_paddle.score += 1
-          calc_reset_round args
-        end
-      end
-
-      def calc_collision_with_walls(args)
-        if args.state.ball.y + args.state.ball.size_half > 720
-          args.state.ball.y = 720 - args.state.ball.size_half
-          args.state.ball.dy *= -1
-        elsif (args.state.ball.y - args.state.ball.size_half).negative?
-          args.state.ball.y = args.state.ball.size_half
-          args.state.ball.dy *= -1
-        end
-      end
-
-      def calc_reset_round(args)
-        args.state.ball.x = 640
-        args.state.ball.y = 360
-        args.state.ball.dx = 5.randomize(:sign)
-        args.state.ball.dy = 5.randomize(:sign)
-        args.state.ball.debounce = 3 * 60
-      end
-end
-
-def input(args)
-  input_left_paddle args
-  input_right_paddle args
-end
-
-begin :input_methods
-      def input_left_paddle(args)
-        if args.inputs.controller_one.key_held.down  || args.inputs.keyboard.key_held.s
-          args.state.left_paddle.y -= 10
-        elsif args.inputs.controller_one.key_down.up || args.inputs.keyboard.key_held.w
-          args.state.left_paddle.y += 10
-        end
-      end
-
-      def input_right_paddle(args)
-        if args.inputs.controller_two.key_down.down  || args.inputs.keyboard.key_held.l
-          args.state.right_paddle.y -= 10
-        elsif args.inputs.controller_two.key_down.up || args.inputs.keyboard.key_held.o
-          args.state.right_paddle.y += 10
-        end
-      end
-end
-
-begin :assets
-      def solid_ball(args)
-        centered_rect args.state.ball.x, args.state.ball.y, args.state.ball.size, args.state.ball.size
-      end
-
-      def solid_left_paddle(args)
-        centered_rect_vertically 0, args.state.left_paddle.y, args.state.paddle.w, args.state.paddle.h
-      end
-
-      def solid_right_paddle(args)
-        centered_rect_vertically 1280 - args.state.paddle.w, args.state.right_paddle.y, args.state.paddle.w,
-                                 args.state.paddle.h
-      end
-
-      def centered_rect(x, y, w, h)
-        [x - w / 2, y - h / 2, w, h]
-      end
-
-      def centered_rect_vertically(x, y, w, h)
-        [x, y - h / 2, w, h]
-      end
+def draw_solid(args, board_x, board_y, box_color)
+  args.outputs.solids << [board_x + 6, board_y + 6,
+                          BOARD_W - 12, BOARD_H - 12] + box_color
 end
