@@ -120,7 +120,7 @@ class Game
               r: 0,
               g: 0,
               b: 0)
-    end
+    end unless state.death_stones_render_queue.nil?
 
     outputs[:lights].primitives << state.checkpoint_stones_render_queue.map do |s|
       s.merge(x: s.x - s.w / 2,
@@ -130,7 +130,7 @@ class Game
               r: 0,
               g: 0,
               b: 0)
-    end
+    end unless state.checkpoint_stones_render_queue.nil?
 
     car_center = { x: 640, y: 360 }
 
